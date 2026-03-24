@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motio — Detect & Select</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* ── Layout: video (center) | right panel ── */
+.select-body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+/* ── Center: Video with bboxes ── */
+.select-center {
+  display: flex; flex-direction: column;
+  padding: 14px; gap: 10px;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+/* Video frame with bounding boxes */
+.detection-frame {
+  flex: 1; min-height: 0;
+  position: relative;
+  background: #000; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.detection-frame video {
+  width: 100%; height: 100%;
+  object-fit: contain; display: block;
+}
+.detection-frame .v-placeholder {
+  width: 100%; height: 100%;
+  background: var(--bg-1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 50px;
+}
+
+/* Scan line effect */
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(37,99,235,0.7) 50%, transparent 100%);
+  animation: scan 2.5s linear infinite;
+  opacity: 0.6; z-index: 4;
+}
+
+/* Bounding boxes */
+.bbox {
+  position: absolute;
+  border: 2px solid;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 5;
+}
+.bbox.person:hover {
+  box-shadow: 0 0 0 1px currentColor, 0 0 20px currentColor;
+}
+.bbox.selected {
+  box-shadow: 0 0 0 2px currentColor, 0 0 28px currentColor !important;
+}
+.bbox.non-person {
+  opacity: 0.45; cursor: default;
+}
+.bbox.non-person:hover { box-shadow: none !important; }
+
+/* Bbox label chip */
+.bbox-chip {
+  position: absolute; top: -26px; left: -2px;
+  padding: 2px 8px;
+  border-radius: 4px 4px 0 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+  background: currentColor; white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+}
+.bbox-chip-text { color: #000; }
+.bbox-conf { color: rgba(0,0,0,0.6); font-size: 9px; }
+
+/* Selected indicator on bbox */
+.bbox-sel-indicator {
+  position: absolute; top: 4px; right: 4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: currentColor;
+  display: none; align-items: center; justify-content: center;
+  font-size: 10px; color: #000;
+}
+.bbox.selected .bbox-sel-indicator { display: flex; }
+
+/* Keypoint dots on selected person */
+.keypoint {
+  position: absolute; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--brand);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px var(--brand);
+  pointer-events: none; z-index: 6;
+}
+
+/* Corner brackets (selected) */
+.bbox.selected::before, .bbox.selected::after {
+  content: none;
+}
+.corner-tl, .corner-tr, .corner-bl, .corner-br {
+  position: absolute; width: 10px; height: 10px;
+  pointer-events: none; display: none;
+}
+.bbox.selected .corner-tl { display: block; top: -1px; left: -1px; border-top: 3px solid var(--text-primary); border-left: 3px solid var(--text-primary); }
+.bbox.selected .corner-tr { display: block; top: -1px; right: -1px; border-top: 3px solid var(--text-primary); border-right: 3px solid var(--text-primary); }
+.bbox.selected .corner-bl { display: block; bottom: -1px; left: -1px; border-bottom: 3px solid var(--text-primary); border-left: 3px solid var(--text-primary); }
+.bbox.selected .corner-br { display: block; bottom: -1px; right: -1px; border-bottom: 3px solid var(--text-primary); border-right: 3px solid var(--text-primary); }
+
+/* Video top overlay */
+.v-top-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  background: linear-gradient(to bottom, rgba(6,8,16,0.8), transparent);
+  padding: 10px 12px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  z-index: 7; pointer-events: none;
+}
+.v-bottom-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(6,8,16,0.85), transparent);
+  padding: 10px 12px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  z-index: 7; pointer-events: none;
+}
+
+/* Detect stats */
+.det-stats {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+
+/* Playback mini bar */
+.mini-play-bar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.mini-play-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--brand); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #fff; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.mini-play-btn:hover { background: var(--brand-light); }
+.mini-scrubber {
+  flex: 1; height: 4px; background: var(--bg-3);
+  border-radius: 2px; cursor: pointer; position: relative;
+}
+.mini-scrub-fill { height: 100%; background: var(--brand); border-radius: 2px; width: 0%; transition: width 0.1s; }
+.mini-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.mini-time span { color: var(--text-secondary); }
+
+/* Range badge on video */
+.range-chip {
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  border: 1px solid rgba(37,99,235,0.4); border-radius: 5px;
+  padding: 3px 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--brand-light);
+}
+
+/* ── Right panel ── */
+.select-right {
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* Object cards */
+.obj-cards { display: flex; flex-direction: column; gap: 7px; padding: 12px; overflow-y: auto; }
+
+.obj-card {
+  background: var(--bg-2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 10px;
+}
+.obj-card:hover:not(.non-person) { border-color: rgba(37,99,235,0.3); background: var(--bg-3); }
+.obj-card.selected {
+  border-color: var(--brand);
+  background: var(--brand-dim);
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.3);
+}
+.obj-card.non-person { opacity: 0.5; cursor: not-allowed; }
+
+.obj-card-color {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.obj-card-info { flex: 1; min-width: 0; }
+.obj-card-name {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+  color: var(--text-primary);
+}
+.obj-card.selected .obj-card-name { color: var(--brand-light); }
+.obj-card-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.obj-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.obj-card-check {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--brand); border: none;
+  display: none; align-items: center; justify-content: center;
+  font-size: 9px; color: #fff;
+}
+.obj-card.selected .obj-card-check { display: flex; }
+
+/* Selection summary */
+.sel-summary {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  padding: 12px;
+}
+.sel-summary-empty {
+  text-align: center; padding: 16px;
+  color: var(--text-muted); font-size: 11px;
+}
+.sel-summary-filled { display: none; }
+.sel-summary-filled.visible { display: block; }
+
+.sel-id {
+  font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;
+  color: var(--brand-light); margin-bottom: 4px;
+}
+.sel-conf {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-muted); margin-bottom: 10px;
+}
+
+/* Actions */
+.select-actions {
+  flex-shrink: 0; padding: 12px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="upload.html"><div class="nav-logo-mark">M</div>Motio</a>
+  <div class="nav-steps">
+    <div class="nav-step done"><span class="dot"></span>Upload</div>
+    <div class="nav-step done"><span class="dot"></span>Clip Range</div>
+    <div class="nav-step active"><span class="dot"></span>Detect</div>
+    <div class="nav-step"><span class="dot"></span>Extract</div>
+    <div class="nav-step"><span class="dot"></span>Result</div>
+  </div>
+  <div class="nav-right">
+    <span class="badge badge-cyan" id="rangeTag">—</span>
+    <span class="badge badge-blue">STEP 3 / 6</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-hdr anim-in">
+    <div class="page-hdr-left">
+      <div class="page-title"><em>Detect</em> & Select Target</div>
+      <div class="page-desc">Click a person on the video or in the list — only human subjects can be selected</div>
+    </div>
+    <div class="page-hdr-right">
+      <span class="badge badge-green" id="detectionBadge">4 objects detected</span>
+      <span class="badge badge-blue">2 persons found</span>
+    </div>
+  </div>
+
+  <div class="page-body anim-in-1">
+    <div class="select-body">
+
+      <!-- Center: Detection frame -->
+      <div class="select-center">
+        <div class="detection-frame" id="detFrame">
+          <!-- Video -->
+          <div class="v-placeholder" id="vPlaceholder">🏃</div>
+          <video id="detVideo" muted loop playsinline style="display:none;"></video>
+
+          <!-- Scan line -->
+          <div class="scan-line"></div>
+
+          <!-- Bounding boxes — positioned relative to video actual render area -->
+          <!-- P01 -->
+          <div class="bbox person" id="bbox-P01" data-id="P01"
+            style="color:#2563eb;border-color:#2563eb;top:8%;left:10%;width:24%;height:72%;">
+            <div class="bbox-chip">
+              <span class="bbox-chip-text">Person 01</span>
+              <span class="bbox-conf">98.2%</span>
+            </div>
+            <div class="bbox-sel-indicator">✓</div>
+            <div class="corner-tl"></div><div class="corner-tr"></div>
+            <div class="corner-bl"></div><div class="corner-br"></div>
+          </div>
+
+          <!-- P02 -->
+          <div class="bbox person" id="bbox-P02" data-id="P02"
+            style="color:#06b6d4;border-color:#06b6d4;top:10%;left:56%;width:22%;height:68%;">
+            <div class="bbox-chip">
+              <span class="bbox-chip-text">Person 02</span>
+              <span class="bbox-conf">94.7%</span>
+            </div>
+            <div class="bbox-sel-indicator">✓</div>
+            <div class="corner-tl"></div><div class="corner-tr"></div>
+            <div class="corner-bl"></div><div class="corner-br"></div>
+          </div>
+
+          <!-- Ball -->
+          <div class="bbox non-person" id="bbox-BALL" data-id="BALL"
+            style="color:#f59e0b;border-color:#f59e0b;top:50%;left:40%;width:7%;height:10%;">
+            <div class="bbox-chip">
+              <span class="bbox-chip-text">Ball</span>
+              <span class="bbox-conf">99.1%</span>
+            </div>
+          </div>
+
+          <!-- Racket -->
+          <div class="bbox non-person" id="bbox-RAC" data-id="RAC"
+            style="color:#6b7280;border-color:#6b7280;top:36%;left:30%;width:6%;height:20%;">
+            <div class="bbox-chip">
+              <span class="bbox-chip-text">Racket</span>
+              <span class="bbox-conf">91.3%</span>
+            </div>
+          </div>
+
+          <!-- Top bar -->
+          <div class="v-top-bar">
+            <div class="det-stats">
+              <span class="badge badge-blue">4 Detected</span>
+              <span class="badge badge-gray" id="vFileTag">sample.mp4</span>
+            </div>
+            <div class="range-chip" id="rangeChip">00:03 — 00:12</div>
+          </div>
+
+          <!-- Bottom bar -->
+          <div class="v-bottom-bar">
+            <span class="badge badge-orange">Click a person to select</span>
+            <span class="badge badge-gray" id="selBadge" style="display:none;"></span>
+          </div>
+        </div>
+
+        <!-- Playback -->
+        <div class="mini-play-bar">
+          <button class="mini-play-btn" id="playBtn">▶</button>
+          <div class="mini-scrubber" id="miniScrub">
+            <div class="mini-scrub-fill" id="miniFill"></div>
+          </div>
+          <div class="mini-time"><span id="curTime">00:00</span> / 00:28</div>
+          <span class="badge badge-gray" id="botFileTag">—</span>
+        </div>
+      </div>
+
+      <!-- Right: Object list + summary -->
+      <div class="select-right">
+        <div class="panel-hdr">
+          <div class="panel-title">Detected Objects</div>
+          <span class="badge badge-gray">4 total</span>
+        </div>
+
+        <div class="obj-cards" id="objCards"></div>
+
+        <!-- Summary -->
+        <div class="sel-summary">
+          <div class="sel-summary-empty" id="sumEmpty">← Select a person to continue</div>
+          <div class="sel-summary-filled" id="sumFilled">
+            <div class="sel-id" id="sumId">—</div>
+            <div class="sel-conf" id="sumConf">—</div>
+            <div class="data-row"><span class="data-key">Type</span><span class="data-val blue">Human Subject</span></div>
+            <div class="data-row"><span class="data-key">Keypoints</span><span class="data-val">17 joints (COCO-17)</span></div>
+            <div class="data-row"><span class="data-key">Visibility</span><span class="data-val green">Full body</span></div>
+            <div class="data-row"><span class="data-key">Tracking</span><span class="data-val green">✓ Stable</span></div>
+          </div>
+        </div>
+
+        <div class="select-actions">
+          <button class="btn btn-secondary btn-sm" onclick="window.location.href='trim.html'">← Back</button>
+          <button class="btn btn-primary" id="nextBtn" disabled>Start Extraction &nbsp;→</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Data ── */
+const persons = [
+  { id:'P01', label:'Person 01', color:'#2563eb', type:'human', conf:'98.2%',
+    desc:'Full body · Low occlusion · Optimal' },
+  { id:'P02', label:'Person 02', color:'#06b6d4', type:'human', conf:'94.7%',
+    desc:'Full body · Slight overlap' },
+  { id:'BALL',label:'Ball',      color:'#f59e0b', type:'object', conf:'99.1%',
+    desc:'Non-human · Not eligible' },
+  { id:'RAC', label:'Racket',    color:'#6b7280', type:'object', conf:'91.3%',
+    desc:'Non-human · Not eligible' },
+];
+
+/* ── Restore ── */
+const storedURL   = localStorage.getItem('motio_videoURL');
+const storedFile  = localStorage.getItem('motio_fileName') || 'sample.mp4';
+const storedStart = localStorage.getItem('motio_startTime') || '00:03';
+const storedEnd   = localStorage.getItem('motio_endTime')   || '00:12';
+
+document.getElementById('rangeTag').textContent   = storedStart + ' — ' + storedEnd;
+document.getElementById('rangeChip').textContent  = storedStart + ' — ' + storedEnd;
+document.getElementById('vFileTag').textContent   = storedFile;
+document.getElementById('botFileTag').textContent = storedFile;
+
+const detVideo = document.getElementById('detVideo');
+if (storedURL) {
+  detVideo.src = storedURL;
+  detVideo.style.display = 'block';
+  document.getElementById('vPlaceholder').style.display = 'none';
+
+  detVideo.addEventListener('timeupdate', () => {
+    const p = detVideo.currentTime / (detVideo.duration || 28) * 100;
+    document.getElementById('miniFill').style.width = p + '%';
+    const t = detVideo.currentTime;
+    const m = Math.floor(t/60), s = Math.floor(t%60);
+    document.getElementById('curTime').textContent =
+      m.toString().padStart(2,'0')+':'+s.toString().padStart(2,'0');
+  });
+}
+
+const playBtn = document.getElementById('playBtn');
+playBtn.addEventListener('click', () => {
+  if (!storedURL) return;
+  if (detVideo.paused) { detVideo.play(); playBtn.textContent = '⏸'; }
+  else { detVideo.pause(); playBtn.textContent = '▶'; }
+});
+
+/* ── Selected state ── */
+let selectedId = null;
+
+/* ── Render object cards ── */
+function renderCards() {
+  const container = document.getElementById('objCards');
+  container.innerHTML = persons.map(p => `
+    <div class="obj-card ${p.type==='object'?'non-person':''} ${selectedId===p.id?'selected':''}"
+         id="card-${p.id}"
+         onclick="${p.type==='human'?`selectPerson('${p.id}')`:''}" >
+      <div class="obj-card-color" style="background:${p.color};${selectedId===p.id?'box-shadow:0 0 8px '+p.color+'88;':''}"></div>
+      <div class="obj-card-info">
+        <div class="obj-card-name">${p.label}</div>
+        <div class="obj-card-sub">${p.desc}</div>
+      </div>
+      <div class="obj-card-right">
+        <div class="obj-card-check">✓</div>
+        <span class="badge ${p.type==='human'?'badge-blue':'badge-orange'}" style="font-size:9px;">${p.type==='human'?'Human':'Object'}</span>
+        <span class="mono" style="font-size:9px;color:var(--text-muted);">${p.conf}</span>
+      </div>
+    </div>`).join('');
+}
+
+function selectPerson(id) {
+  selectedId = id;
+  const p = persons.find(x => x.id === id);
+
+  /* Store */
+  localStorage.setItem('motio_selectedId',    id);
+  localStorage.setItem('motio_selectedLabel', p.label);
+
+  /* Bbox highlight */
+  document.querySelectorAll('.bbox').forEach(b => {
+    b.classList.remove('selected');
+    b.style.filter = b.dataset.id === id ? '' : 'brightness(0.4)';
+  });
+  document.getElementById('bbox-' + id).classList.add('selected');
+
+  /* Bottom badge on video */
+  const sb = document.getElementById('selBadge');
+  sb.textContent = '✓ ' + p.label + ' selected';
+  sb.style.display = 'inline-flex';
+  sb.className = 'badge badge-blue';
+
+  /* Summary panel */
+  document.getElementById('sumEmpty').style.display = 'none';
+  const sf = document.getElementById('sumFilled');
+  sf.classList.add('visible');
+  document.getElementById('sumId').textContent   = p.label;
+  document.getElementById('sumConf').textContent = 'Confidence: ' + p.conf + ' · Tracking: stable';
+
+  /* Next btn */
+  document.getElementById('nextBtn').disabled = false;
+
+  renderCards();
+}
+
+renderCards();
+
+document.getElementById('nextBtn').addEventListener('click', () => window.location.href = 'waiting.html');
+</script>
+</body>
+</html>

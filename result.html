@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motio — Result</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* ── Three column: video preview | summary | download ── */
+.result-body {
+  display: grid;
+  grid-template-columns: 1fr 260px 260px;
+  gap: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+/* ── Left: Video preview + skeleton ── */
+.result-left {
+  display: flex; flex-direction: column;
+  padding: 14px; gap: 10px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--bg-0);
+}
+
+/* Success banner */
+.success-strip {
+  flex-shrink: 0;
+  background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.22);
+  border-radius: 8px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.success-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35);
+  display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+}
+.success-text h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--success); }
+.success-text p { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+/* Tabs */
+.preview-tabs {
+  flex-shrink: 0;
+  display: flex; gap: 0; background: var(--bg-2);
+  border: 1px solid var(--border); border-radius: 7px; padding: 3px; width: fit-content;
+}
+.ptab {
+  padding: 5px 14px; border-radius: 5px; border: none; cursor: pointer;
+  font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif;
+  background: transparent; color: var(--text-muted); transition: all 0.2s;
+}
+.ptab.active {
+  background: var(--brand); color: #fff;
+  box-shadow: 0 0 10px rgba(37,99,235,0.35);
+}
+
+/* Preview area */
+.preview-area {
+  flex: 1; min-height: 0;
+  background: #000; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border); position: relative;
+}
+.preview-area video {
+  width: 100%; height: 100%; object-fit: contain;
+  filter: brightness(0.55) saturate(0.6);
+}
+.preview-area .v-ph {
+  width: 100%; height: 100%;
+  background: var(--bg-1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px;
+}
+
+/* Animated skeleton on video */
+.skeleton-result-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 2;
+}
+
+/* Overlay labels */
+.pv-top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; z-index: 3; pointer-events: none; }
+.pv-bot { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px; background: linear-gradient(to top, rgba(6,8,16,0.9), transparent); z-index: 3; pointer-events: none; }
+
+/* Playback mini -->
+.mini-play-row {
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+}
+.mpb { width: 24px; height: 24px; border-radius: 50%; background: var(--brand); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; flex-shrink: 0; }
+.mpb:hover { background: var(--brand-light); }
+.mps { flex: 1; height: 3px; background: var(--bg-3); border-radius: 2px; overflow: hidden; }
+.mps-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--accent)); animation: play-bar 3s linear infinite; }
+@keyframes play-bar { 0%{width:0%} 100%{width:100%} }
+.mpt { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+
+/* Curves tab */
+.curves-content { display: none; width: 100%; height: 100%; flex-direction: column; padding: 12px; gap: 6px; overflow: hidden; }
+.curves-content.visible { display: flex; }
+.curve-row { display: grid; grid-template-columns: 74px 1fr 40px; gap: 8px; align-items: center; }
+.curve-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-secondary); }
+.curve-track { height: 22px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
+.curve-track svg { width: 100%; height: 100%; }
+.curve-avg { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted); text-align: right; }
+
+/* ── Center: Output summary ── */
+.result-center {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.result-center .panel-body { padding: 14px; overflow-y: auto; }
+
+.sum-section { margin-bottom: 12px; }
+.sum-section-title {
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+  color: var(--text-secondary); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 5px;
+}
+.sum-section-title::before { content:''; width:2px; height:11px; background:var(--brand); border-radius:2px; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+.stat-box {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px; text-align: center;
+}
+.stat-num {
+  font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+  color: var(--brand-light); line-height: 1;
+}
+.stat-lbl { font-size: 9px; color: var(--text-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+/* Quality meter */
+.quality-bar { height: 5px; background: var(--bg-3); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.quality-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--brand), var(--success)); }
+
+/* ── Right: Download ── */
+.result-right {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.result-right .panel-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+
+/* Format options */
+.fmt-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fmt-opt {
+  background: var(--bg-2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 11px 10px; text-align: center;
+  cursor: pointer; transition: all 0.2s;
+}
+.fmt-opt:hover { border-color: rgba(37,99,235,0.3); }
+.fmt-opt.selected {
+  border-color: var(--brand); background: var(--brand-dim);
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.2);
+}
+.fmt-name {
+  font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700;
+  color: var(--text-primary); margin-bottom: 4px;
+}
+.fmt-opt.selected .fmt-name { color: var(--brand-light); }
+.fmt-desc { font-size: 9px; color: var(--text-muted); line-height: 1.5; }
+.fmt-opt.selected .fmt-desc { color: var(--brand-light); }
+
+/* Engine badges */
+.engines {
+  display: flex; gap: 7px; flex-wrap: wrap;
+}
+.engine-pill {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 7px; border-radius: 7px; font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 600;
+}
+.ep-unity { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); }
+.ep-unreal { background: var(--brand-dim); border: 1px solid rgba(37,99,235,0.25); color: var(--brand-light); }
+.ep-blender { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); color: var(--warning); }
+
+/* Download btn */
+.dl-btn {
+  width: 100%; padding: 13px;
+  background: var(--brand); color: #fff; border: none;
+  border-radius: 9px; cursor: pointer;
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 0 24px rgba(37,99,235,0.38);
+  transition: all 0.2s;
+}
+.dl-btn:hover { background: var(--brand-light); box-shadow: 0 0 36px rgba(37,99,235,0.55); transform: translateY(-1px); }
+
+.dl-btn-sec {
+  width: 100%; padding: 9px;
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 7px; cursor: pointer;
+  font-size: 12px; font-weight: 500; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.dl-btn-sec:hover { border-color: var(--border-2); color: var(--text-primary); }
+
+/* New project */
+.new-proj-box {
+  background: rgba(37,99,235,0.05); border: 1px solid rgba(37,99,235,0.15);
+  border-radius: 8px; padding: 12px;
+}
+.np-text { font-size: 11px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px; }
+.np-text strong { color: var(--brand-light); }
+
+/* Right actions */
+.result-actions {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  padding: 12px; display: flex; flex-direction: column; gap: 6px;
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="upload.html"><div class="nav-logo-mark">M</div>Motio</a>
+  <div class="nav-steps">
+    <div class="nav-step done"><span class="dot"></span>Upload</div>
+    <div class="nav-step done"><span class="dot"></span>Clip Range</div>
+    <div class="nav-step done"><span class="dot"></span>Detect</div>
+    <div class="nav-step done"><span class="dot"></span>Extract</div>
+    <div class="nav-step active"><span class="dot"></span>Result</div>
+  </div>
+  <div class="nav-right">
+    <span class="badge badge-green">✓ COMPLETE</span>
+    <span class="badge badge-blue">STEP 6 / 6</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-hdr anim-in">
+    <div class="page-hdr-left">
+      <div class="page-title">Animation <em>Ready</em></div>
+      <div class="page-desc">Motion extraction complete — select output format and download</div>
+    </div>
+    <div class="page-hdr-right">
+      <button class="btn btn-ghost btn-sm" onclick="window.location.href='upload.html'">+ New Project</button>
+    </div>
+  </div>
+
+  <div class="page-body anim-in-1">
+    <div class="result-body">
+
+      <!-- Left: Video Preview -->
+      <div class="result-left">
+        <div class="success-strip">
+          <div class="success-icon">✓</div>
+          <div class="success-text">
+            <h3>Motion Extraction Complete</h3>
+            <p id="successDesc">270 frames · 17 joints reconstructed · 3D animation data ready</p>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+          <div class="preview-tabs">
+            <button class="ptab active" onclick="switchTab('3d',this)">3D Preview</button>
+            <button class="ptab" onclick="switchTab('curves',this)">Motion Curves</button>
+          </div>
+          <span class="badge badge-green">▶ Playing</span>
+        </div>
+
+        <div class="preview-area">
+          <div class="v-ph" id="resPH">🎬</div>
+          <video id="resVideo" muted loop playsinline style="display:none;"></video>
+
+          <!-- Skeleton overlay -->
+          <div class="skeleton-result-overlay" id="skeletonOverlay">
+            <svg id="resSkelSvg" width="180" height="300" viewBox="0 0 180 300"
+                 style="filter:drop-shadow(0 0 8px rgba(37,99,235,0.65));"></svg>
+          </div>
+
+          <!-- Curves overlay (hidden) -->
+          <div class="curves-content" id="curvesView" style="display:none;">
+          </div>
+
+          <div class="pv-top">
+            <span class="badge badge-blue" id="resTargetBadge">Person 01</span>
+            <span class="badge badge-green">✓ Extracted</span>
+          </div>
+          <div class="pv-bot">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+              <span class="badge badge-gray" id="resFileBadge">sample.mp4</span>
+              <span class="badge badge-cyan" id="resRangeBadge">00:03 → 00:12</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mini-play-row">
+          <button class="mpb" id="resPlayBtn">▶</button>
+          <div class="mps"><div class="mps-fill"></div></div>
+          <span class="mpt" id="resFileSmall">—</span>
+        </div>
+      </div>
+
+      <!-- Center: Summary -->
+      <div class="result-center">
+        <div class="panel-hdr">
+          <div class="panel-title">Output Summary</div>
+          <span class="badge badge-green">✓</span>
+        </div>
+        <div class="panel-body panel-body-scroll">
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-num">270</div>
+              <div class="stat-lbl">FRAMES</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num">17</div>
+              <div class="stat-lbl">JOINTS</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" id="statDur" style="font-size:18px;">9s</div>
+              <div class="stat-lbl">DURATION</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num">30</div>
+              <div class="stat-lbl">FPS</div>
+            </div>
+          </div>
+
+          <div class="sum-section">
+            <div class="sum-section-title">Source</div>
+            <div class="data-row"><span class="data-key">File</span><span class="data-val" id="sumFile">—</span></div>
+            <div class="data-row"><span class="data-key">Clip Range</span><span class="data-val blue" id="sumRange">—</span></div>
+            <div class="data-row"><span class="data-key">Target</span><span class="data-val blue" id="sumTarget">—</span></div>
+          </div>
+
+          <div class="sum-section">
+            <div class="sum-section-title">Extraction</div>
+            <div class="data-row"><span class="data-key">Skeleton</span><span class="data-val">COCO-17</span></div>
+            <div class="data-row"><span class="data-key">Smoothing</span><span class="data-val">Kalman Filter</span></div>
+            <div class="data-row"><span class="data-key">Avg Confidence</span><span class="data-val green">96.3%</span></div>
+            <div class="data-row"><span class="data-key">3D Projection</span><span class="data-val green">✓ Done</span></div>
+          </div>
+
+          <div class="sum-section">
+            <div class="sum-section-title">Quality</div>
+            <div style="margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:4px;">
+                <span>Pose Accuracy</span><span class="mono" style="color:var(--success);">96.3%</span>
+              </div>
+              <div class="quality-bar"><div class="quality-fill" style="width:96.3%;"></div></div>
+            </div>
+            <div style="margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:4px;">
+                <span>Temporal Smoothness</span><span class="mono" style="color:var(--success);">94.1%</span>
+              </div>
+              <div class="quality-bar"><div class="quality-fill" style="width:94.1%;background:linear-gradient(90deg,var(--accent),var(--success));"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary);margin-bottom:4px;">
+                <span>Occlusion Recovery</span><span class="mono" style="color:var(--warning);">87.5%</span>
+              </div>
+              <div class="quality-bar"><div class="quality-fill" style="width:87.5%;background:linear-gradient(90deg,var(--brand),var(--warning));"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Download -->
+      <div class="result-right">
+        <div class="panel-hdr">
+          <div class="panel-title">Download</div>
+          <span class="badge badge-blue" id="dlFormat">FBX</span>
+        </div>
+        <div class="panel-body">
+          <!-- Format -->
+          <div>
+            <div class="sec-label" style="margin-bottom:7px;">Output Format</div>
+            <div class="fmt-options">
+              <div class="fmt-opt selected" id="fmt-fbx" onclick="selectFmt('FBX')">
+                <div class="fmt-name">FBX</div>
+                <div class="fmt-desc">Industry standard<br>Unity · Unreal</div>
+              </div>
+              <div class="fmt-opt" id="fmt-bvh" onclick="selectFmt('BVH')">
+                <div class="fmt-name">BVH</div>
+                <div class="fmt-desc">Biovision<br>Blender · MB</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Engines -->
+          <div>
+            <div class="sec-label" style="margin-bottom:7px;">Compatible Engines</div>
+            <div class="engines">
+              <div class="engine-pill ep-unity">⬡ Unity</div>
+              <div class="engine-pill ep-unreal">◈ Unreal</div>
+            </div>
+            <div class="engines" style="margin-top:6px;">
+              <div class="engine-pill ep-blender" style="flex:none;padding:6px 12px;">⬡ Blender</div>
+              <div class="engine-pill ep-unity" style="flex:none;padding:6px 12px;">◈ MotionBuilder</div>
+            </div>
+          </div>
+
+          <!-- Download -->
+          <button class="dl-btn" id="dlBtn">↓ &nbsp;Download FBX</button>
+          <button class="dl-btn-sec" id="dlBtnSec">↓ &nbsp;Download BVH</button>
+
+          <!-- New project -->
+          <div class="new-proj-box">
+            <div class="np-text">
+              🚀 <strong>Motio</strong> supports sports, dance, martial arts & custom performance.<br>
+              Expand your animation library.
+            </div>
+            <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="window.location.href='upload.html'">
+              + New Extraction
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Restore state ── */
+const storedURL   = localStorage.getItem('motio_videoURL');
+const storedFile  = localStorage.getItem('motio_fileName')      || 'sample.mp4';
+const storedStart = localStorage.getItem('motio_startTime')     || '00:03';
+const storedEnd   = localStorage.getItem('motio_endTime')       || '00:12';
+const storedLabel = localStorage.getItem('motio_selectedLabel') || 'Person 01';
+
+/* Compute duration */
+function timeToSec(t) {
+  const [m,s] = t.split(':').map(Number); return m*60+s;
+}
+const durSec = timeToSec(storedEnd) - timeToSec(storedStart);
+
+/* Fill UI */
+document.getElementById('sumFile').textContent       = storedFile;
+document.getElementById('sumRange').textContent      = storedStart + ' → ' + storedEnd;
+document.getElementById('sumTarget').textContent     = storedLabel;
+document.getElementById('resTargetBadge').textContent= storedLabel;
+document.getElementById('resFileBadge').textContent  = storedFile;
+document.getElementById('resRangeBadge').textContent = storedStart + ' → ' + storedEnd;
+document.getElementById('resFileSmall').textContent  = storedFile;
+document.getElementById('statDur').textContent       = durSec + 's';
+document.getElementById('successDesc').textContent   = (durSec*30) + ' frames · 17 joints reconstructed · 3D animation data ready';
+
+/* Video */
+const resVideo = document.getElementById('resVideo');
+if (storedURL) {
+  resVideo.src = storedURL;
+  resVideo.style.display = 'block';
+  document.getElementById('resPH').style.display = 'none';
+  resVideo.play().catch(()=>{});
+}
+
+const resPlayBtn = document.getElementById('resPlayBtn');
+resPlayBtn.addEventListener('click', () => {
+  if (!storedURL) return;
+  if (resVideo.paused) { resVideo.play(); resPlayBtn.textContent = '⏸'; }
+  else { resVideo.pause(); resPlayBtn.textContent = '▶'; }
+});
+
+/* ── Animated skeleton ── */
+const RJ = [
+  {x:90,y:22},{x:82,y:17},{x:98,y:17},{x:74,y:22},{x:106,y:22},
+  {x:65,y:60},{x:115,y:60},{x:52,y:96},{x:128,y:96},{x:43,y:128},{x:137,y:128},
+  {x:70,y:148},{x:110,y:148},{x:67,y:200},{x:113,y:200},
+  {x:64,y:252},{x:116,y:252},
+];
+const RB = [
+  [0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,6],
+  [5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],
+  [11,13],[13,15],[12,14],[14,16],
+];
+const rSvg = document.getElementById('resSkelSvg');
+const rBones = RB.map(([a,b]) => {
+  const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('stroke','rgba(37,99,235,0.65)'); l.setAttribute('stroke-width','2');
+  l.setAttribute('stroke-linecap','round'); rSvg.appendChild(l); return l;
+});
+const rJoints = RJ.map(j => {
+  const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',j.x); c.setAttribute('cy',j.y); c.setAttribute('r','4');
+  c.setAttribute('fill','#2563eb'); c.setAttribute('stroke','rgba(37,99,235,0.4)'); c.setAttribute('stroke-width','2');
+  rSvg.appendChild(c); return c;
+});
+
+let rt = 0;
+function animSkel() {
+  rt += 0.04;
+  RJ.forEach((jBase, i) => {
+    const amp = i >= 11 ? 5 : 2;
+    const nx = jBase.x + Math.sin(rt + i * 0.5) * amp;
+    const ny = jBase.y + Math.cos(rt * 0.6 + i * 0.4) * (amp * 0.6);
+    rJoints[i].setAttribute('cx', nx); rJoints[i].setAttribute('cy', ny);
+  });
+  RB.forEach(([a,b], idx) => {
+    rBones[idx].setAttribute('x1', rJoints[a].getAttribute('cx'));
+    rBones[idx].setAttribute('y1', rJoints[a].getAttribute('cy'));
+    rBones[idx].setAttribute('x2', rJoints[b].getAttribute('cx'));
+    rBones[idx].setAttribute('y2', rJoints[b].getAttribute('cy'));
+  });
+  requestAnimationFrame(animSkel);
+}
+animSkel();
+
+/* ── Tabs ── */
+function switchTab(tab, btn) {
+  document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const skel = document.getElementById('skeletonOverlay');
+  const curves = document.getElementById('curvesView');
+
+  if (tab === '3d') {
+    skel.style.display = 'flex'; curves.style.display = 'none';
+  } else {
+    skel.style.display = 'none'; curves.style.display = 'flex';
+    renderCurves();
+  }
+}
+
+function renderCurves() {
+  const c = document.getElementById('curvesView');
+  const curveData = [
+    { name:'Hip · Y',    color:'#2563eb', data: Array.from({length:60},(_,i) => Math.sin(i*0.25)*30+50) },
+    { name:'Spine',      color:'#06b6d4', data: Array.from({length:60},(_,i) => Math.sin(i*0.2+1)*20+50) },
+    { name:'L.Shoulder', color:'#10b981', data: Array.from({length:60},(_,i) => Math.cos(i*0.35)*35+50) },
+    { name:'R.Shoulder', color:'#f59e0b', data: Array.from({length:60},(_,i) => Math.cos(i*0.35+Math.PI)*35+50) },
+    { name:'L.Knee',     color:'#8b5cf6', data: Array.from({length:60},(_,i) => Math.abs(Math.sin(i*0.5))*55+20) },
+    { name:'R.Knee',     color:'#ec4899', data: Array.from({length:60},(_,i) => Math.abs(Math.sin(i*0.5+Math.PI))*55+20) },
+    { name:'L.Ankle',    color:'#f59e0b', data: Array.from({length:60},(_,i) => Math.abs(Math.sin(i*0.7))*60+15) },
+    { name:'R.Ankle',    color:'#2563eb', data: Array.from({length:60},(_,i) => Math.abs(Math.sin(i*0.7+Math.PI))*60+15) },
+  ];
+  c.innerHTML = `
+    <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px;padding:0 2px;">Joint Motion Curves</div>
+    ${curveData.map(cd => {
+      const pts = cd.data.map((v,i) => `${i*(100/60)},${100-v}`).join(' ');
+      const avg = (cd.data.reduce((a,b)=>a+b,0)/cd.data.length).toFixed(0);
+      return `<div class="curve-row">
+        <div class="curve-lbl">${cd.name}</div>
+        <div class="curve-track">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline points="${pts}" fill="none" stroke="${cd.color}" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+            <polyline points="${pts}" fill="${cd.color}" fill-opacity="0.08" stroke="none"/>
+          </svg>
+        </div>
+        <div class="curve-avg">${avg}</div>
+      </div>`;
+    }).join('')}`;
+}
+
+/* ── Format select ── */
+let selFmt = 'FBX';
+function selectFmt(fmt) {
+  selFmt = fmt;
+  ['FBX','BVH'].forEach(f => {
+    document.getElementById('fmt-'+f.toLowerCase()).classList.toggle('selected', f===fmt);
+  });
+  document.getElementById('dlBtn').innerHTML = '↓ &nbsp;Download ' + fmt;
+  document.getElementById('dlFormat').textContent = fmt;
+  localStorage.setItem('motio_outputFormat', fmt);
+}
+
+/* Download stubs */
+document.getElementById('dlBtn').addEventListener('click', () => {
+  const b = document.getElementById('dlBtn');
+  const orig = b.innerHTML;
+  b.innerHTML = '✓ &nbsp;Downloaded!';
+  b.style.background = 'var(--success)';
+  setTimeout(() => { b.innerHTML = orig; b.style.background = ''; }, 2000);
+});
+document.getElementById('dlBtnSec').addEventListener('click', () => {
+  const b = document.getElementById('dlBtnSec');
+  b.textContent = '✓ Downloaded!';
+  setTimeout(() => { b.textContent = '↓  Download BVH'; }, 2000);
+});
+</script>
+</body>
+</html>
