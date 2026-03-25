@@ -610,15 +610,18 @@ if (storedURL) {
 /* ─────────────────────────────────────────────
    VIDEO EVENTS
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+    VIDEO EVENTS (수정본)
+───────────────────────────────────────────── */
 video.addEventListener('loadedmetadata', () => {
   dur   = video.duration;
   ready = true;
 
-  /* Default: 10%–45% */
+  /* 초기 설정: 10%–45% */
   startSec = dur * 0.10;
   endSec   = dur * 0.45;
 
-  /* Restore saved range */
+  /* 저장된 범위 복구 */
   const ss = localStorage.getItem('motio_startTime');
   const se = localStorage.getItem('motio_endTime');
   if (ss && se) {
@@ -640,12 +643,19 @@ video.addEventListener('loadedmetadata', () => {
   document.getElementById('lbTotal').textContent = s2t(dur);
   document.getElementById('tlDurBadge').textContent = s2t(dur);
 
+  // 처음 시작 위치를 선택된 시작 지점으로 이동
   video.currentTime = startSec;
   cpi.classList.add('show');
 });
 
 video.addEventListener('timeupdate', () => {
   if (!ready || dur === 0) return;
+
+  // [추가된 로직] 현재 시간이 설정된 종료 지점을 넘어가면 시작 지점으로 되돌림
+  if (video.currentTime >= endSec) {
+    video.currentTime = startSec;
+  }
+
   const pct = (video.currentTime / dur * 100).toFixed(3);
   posPlayed.style.width = pct + '%';
   posThumb.style.left   = pct + '%';
@@ -658,17 +668,19 @@ video.addEventListener('play',  () => {
   playPauseBtn.textContent = '⏸';
   cpi.classList.remove('show');
 });
+
 video.addEventListener('pause', () => {
   playPauseBtn.textContent = '▶';
   cpiIcon.textContent = '▶';
   cpi.classList.add('show');
   setTimeout(() => cpi.classList.remove('show'), 700);
 });
+
+// 영상 자체가 끝났을 때(마지막 프레임) 처리
 video.addEventListener('ended', () => {
   video.currentTime = startSec;
   video.play();
 });
-
 /* ─────────────────────────────────────────────
    PLAY / PAUSE
 ───────────────────────────────────────────── */
