@@ -6,24 +6,19 @@
 <title>Motio — Detect & Select</title>
 <link rel="stylesheet" href="shared.css">
 <style>
-/* ── Layout: video (center) | right panel ── */
 .select-body {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 0;
-  width: 100%; height: 100%;
-  overflow: hidden;
+  grid-template-columns: 1fr 280px;
+  width: 100%; height: 100%; overflow: hidden;
 }
 
-/* ── Center: Video with bboxes ── */
-.select-center {
+/* ── Left: video frame ── */
+.select-left {
   display: flex; flex-direction: column;
-  padding: 14px; gap: 10px;
-  overflow: hidden;
-  background: var(--bg-0);
+  padding: 20px; gap: 14px;
+  overflow: hidden; background: #fff;
 }
 
-/* Video frame with bounding boxes */
 .detection-frame {
   flex: 1; min-height: 0;
   position: relative;
@@ -31,209 +26,131 @@
   border: 1px solid var(--border);
 }
 .detection-frame video {
-  width: 100%; height: 100%;
-  object-fit: contain; display: block;
+  width: 100%; height: 100%; object-fit: contain; display: block;
 }
-.detection-frame .v-placeholder {
-  width: 100%; height: 100%;
-  background: var(--bg-1);
+.detection-frame .no-video {
+  width: 100%; height: 100%; background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center;
-  font-size: 50px;
+  font-size: 13px; color: var(--text-4);
 }
 
-/* Scan line effect */
+/* Scan line */
 .scan-line {
-  position: absolute; left: 0; right: 0; height: 2px; pointer-events: none;
-  background: linear-gradient(90deg, transparent 0%, rgba(37,99,235,0.7) 50%, transparent 100%);
-  animation: scan 2.5s linear infinite;
-  opacity: 0.6; z-index: 4;
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.6), transparent);
+  pointer-events: none; z-index: 4;
+  animation: scan-anim 2.8s linear infinite;
 }
+@keyframes scan-anim { 0%{top:0%} 100%{top:100%} }
 
 /* Bounding boxes */
 .bbox {
-  display: none;
-  position: absolute;
-  border: 2px solid;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  z-index: 5;
+  position: absolute; border: 2px solid;
+  border-radius: 4px; z-index: 5;
+  cursor: pointer; transition: all 0.18s;
 }
-.bbox.person:hover {
-  box-shadow: 0 0 0 1px currentColor, 0 0 20px currentColor;
-}
-.bbox.selected {
-  box-shadow: 0 0 0 2px currentColor, 0 0 28px currentColor !important;
-}
-.bbox.non-person {
-  opacity: 0.45; cursor: default;
-}
+.bbox.person:hover { box-shadow: 0 0 0 2px currentColor; }
+.bbox.selected { box-shadow: 0 0 0 2px currentColor, 0 0 16px rgba(37,99,235,0.25) !important; }
+.bbox.non-person { opacity: 0.35; cursor: default; }
 .bbox.non-person:hover { box-shadow: none !important; }
+.bbox.dimmed { opacity: 0.25; }
 
-/* Bbox label chip */
-.bbox-chip {
-  position: absolute; top: -26px; left: -2px;
-  padding: 2px 8px;
-  border-radius: 4px 4px 0 0;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+/* Bbox label */
+.bbox-label {
+  position: absolute; top: -22px; left: -2px;
+  padding: 1px 7px; border-radius: 3px 3px 0 0;
+  font-size: 10px; font-weight: 600;
   background: currentColor; white-space: nowrap;
-  display: flex; align-items: center; gap: 5px;
+  display: flex; gap: 5px;
 }
-.bbox-chip-text { color: #000; }
-.bbox-conf { color: rgba(0,0,0,0.6); font-size: 9px; }
+.bbox-label-text { color: #fff; mix-blend-mode: difference; }
+.bbox-label-conf { color: rgba(255,255,255,0.65); font-size: 9px; }
 
-/* Selected indicator on bbox */
-.bbox-sel-indicator {
-  position: absolute; top: 4px; right: 4px;
-  width: 18px; height: 18px; border-radius: 50%;
+.bbox-check {
+  position: absolute; top: 5px; right: 5px;
+  width: 16px; height: 16px; border-radius: 50%;
   background: currentColor;
   display: none; align-items: center; justify-content: center;
-  font-size: 10px; color: #000;
+  font-size: 9px; color: #fff;
 }
-.bbox.selected .bbox-sel-indicator { display: flex; }
+.bbox.selected .bbox-check { display: flex; }
 
-/* Keypoint dots on selected person */
-.keypoint {
-  position: absolute; width: 6px; height: 6px;
-  border-radius: 50%; background: var(--brand);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 6px var(--brand);
-  pointer-events: none; z-index: 6;
-}
-
-/* Corner brackets (selected) */
-.bbox.selected::before, .bbox.selected::after {
-  content: none;
-}
-.corner-tl, .corner-tr, .corner-bl, .corner-br {
-  position: absolute; width: 10px; height: 10px;
-  pointer-events: none; display: none;
-}
-.bbox.selected .corner-tl { display: block; top: -1px; left: -1px; border-top: 3px solid var(--text-primary); border-left: 3px solid var(--text-primary); }
-.bbox.selected .corner-tr { display: block; top: -1px; right: -1px; border-top: 3px solid var(--text-primary); border-right: 3px solid var(--text-primary); }
-.bbox.selected .corner-bl { display: block; bottom: -1px; left: -1px; border-bottom: 3px solid var(--text-primary); border-left: 3px solid var(--text-primary); }
-.bbox.selected .corner-br { display: block; bottom: -1px; right: -1px; border-bottom: 3px solid var(--text-primary); border-right: 3px solid var(--text-primary); }
-
-/* Video top overlay */
+/* Overlay bars */
 .v-top-bar {
   position: absolute; top: 0; left: 0; right: 0;
-  background: linear-gradient(to bottom, rgba(6,8,16,0.8), transparent);
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
   padding: 10px 12px;
   display: flex; justify-content: space-between; align-items: flex-start;
   z-index: 7; pointer-events: none;
 }
 .v-bottom-bar {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: linear-gradient(to top, rgba(6,8,16,0.85), transparent);
+  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
   padding: 10px 12px;
   display: flex; justify-content: space-between; align-items: flex-end;
   z-index: 7; pointer-events: none;
 }
 
-/* Detect stats */
-.det-stats {
-  display: flex; gap: 6px; flex-wrap: wrap;
-}
-
 /* Playback mini bar */
-.mini-play-bar {
+.mini-pb {
   flex-shrink: 0;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
 }
-.mini-play-btn {
-  width: 28px; height: 28px; border-radius: 50%;
+.mini-play {
+  width: 26px; height: 26px; border-radius: 50%;
   background: var(--brand); border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; color: #fff; flex-shrink: 0;
-  transition: all 0.15s;
+  font-size: 10px; color: #fff;
 }
-.mini-play-btn:hover { background: var(--brand-light); }
-.mini-scrubber {
-  flex: 1; height: 4px; background: var(--bg-3);
-  border-radius: 2px; cursor: pointer; position: relative;
+.mini-play:hover { background: var(--accent); }
+.mini-scrub {
+  flex: 1; height: 3px; background: var(--bg-subtle);
+  border-radius: 2px; overflow: hidden; cursor: pointer;
 }
-.mini-scrub-fill { height: 100%; background: var(--brand); border-radius: 2px; width: 0%; transition: width 0.1s; }
-.mini-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); white-space: nowrap; }
-.mini-time span { color: var(--text-secondary); }
+.mini-scrub-fill { height: 100%; background: var(--brand); width: 0%; transition: width 0.1s; }
+.mini-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); white-space: nowrap; }
 
-/* Range badge on video */
-.range-chip {
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
-  border: 1px solid rgba(37,99,235,0.4); border-radius: 5px;
-  padding: 3px 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--brand-light);
-}
-
-/* ── Right panel ── */
+/* ── Right: Object list ── */
 .select-right {
+  background: var(--bg-sub);
   border-left: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  overflow: hidden;
+  display: flex; flex-direction: column; overflow: hidden;
 }
+.select-right .side-body { gap: 8px; }
 
-/* Object cards */
-.obj-cards { display: flex; flex-direction: column; gap: 7px; padding: 12px; overflow-y: auto; }
-
+/* Object card */
 .obj-card {
-  background: var(--bg-2); border: 1.5px solid var(--border);
+  background: #fff; border: 1.5px solid var(--border);
   border-radius: 8px; padding: 10px 12px;
-  cursor: pointer; transition: all 0.2s;
+  cursor: pointer; transition: border-color 0.15s;
   display: flex; align-items: center; gap: 10px;
 }
-.obj-card:hover:not(.non-person) { border-color: rgba(37,99,235,0.3); background: var(--bg-3); }
-.obj-card.selected {
-  border-color: var(--brand);
-  background: var(--brand-dim);
-  box-shadow: 0 0 0 1px rgba(37,99,235,0.3);
-}
+.obj-card:hover:not(.non-person) { border-color: var(--brand); }
+.obj-card.selected { border-color: var(--brand); background: var(--brand-light); }
 .obj-card.non-person { opacity: 0.5; cursor: not-allowed; }
+.obj-card.non-person:hover { border-color: var(--border); }
 
-.obj-card-color {
-  width: 10px; height: 10px; border-radius: 50%;
-  flex-shrink: 0;
-}
-.obj-card-info { flex: 1; min-width: 0; }
-.obj-card-name {
-  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
-  color: var(--text-primary);
-}
-.obj-card.selected .obj-card-name { color: var(--brand-light); }
-.obj-card-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
-.obj-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.obj-card-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.obj-card-name { flex: 1; font-size: 12px; font-weight: 500; color: var(--text-1); }
 .obj-card-check {
   width: 16px; height: 16px; border-radius: 50%;
-  background: var(--brand); border: none;
+  background: var(--brand); color: #fff;
   display: none; align-items: center; justify-content: center;
-  font-size: 9px; color: #fff;
+  font-size: 9px; flex-shrink: 0;
 }
 .obj-card.selected .obj-card-check { display: flex; }
 
-/* Selection summary */
+/* Summary */
 .sel-summary {
-  flex-shrink: 0; border-top: 1px solid var(--border);
-  padding: 12px;
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  flex-shrink: 0; background: #fff;
 }
-.sel-summary-empty {
-  text-align: center; padding: 16px;
-  color: var(--text-muted); font-size: 11px;
-}
-.sel-summary-filled { display: none; }
-.sel-summary-filled.visible { display: block; }
-
-.sel-id {
-  font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800;
-  color: var(--brand-light); margin-bottom: 4px;
-}
-.sel-conf {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--text-muted); margin-bottom: 10px;
-}
-
-/* Actions */
-.select-actions {
-  flex-shrink: 0; padding: 12px; border-top: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 6px;
-}
+.sel-summary-empty { font-size: 12px; color: var(--text-4); text-align: center; padding: 8px 0; }
+.sel-summary-info { display: none; }
+.sel-summary-info.show { display: block; }
+.sel-name { font-size: 15px; font-weight: 600; color: var(--brand); margin-bottom: 8px; }
+.sel-conf { font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -248,131 +165,116 @@
     <div class="nav-step"><span class="dot"></span>Result</div>
   </div>
   <div class="nav-right">
-    <span class="badge badge-cyan" id="rangeTag">—</span>
-    <span class="badge badge-blue">STEP 3 / 6</span>
+    <span class="badge badge-blue" id="rangeTag">—</span>
+    <span class="badge badge-gray">Step 3 of 6</span>
   </div>
 </nav>
 
 <div class="page">
-  <div class="page-hdr anim-in">
-    <div class="page-hdr-left">
+  <div class="page-hdr anim">
+    <div>
       <div class="page-title"><em>Detect</em> & Select Target</div>
       <div class="page-desc">Click a person on the video or in the list — only human subjects can be selected</div>
     </div>
     <div class="page-hdr-right">
-      <span class="badge badge-green" id="detectionBadge">4 objects detected</span>
-      <span class="badge badge-blue">2 persons found</span>
+      <span class="badge badge-blue">4 objects detected</span>
+      <span class="badge badge-blue">2 persons</span>
     </div>
   </div>
 
-  <div class="page-body anim-in-1">
+  <div class="page-body anim-1">
     <div class="select-body">
 
-      <!-- Center: Detection frame -->
-      <div class="select-center">
+      <!-- Left: detection frame -->
+      <div class="select-left">
         <div class="detection-frame" id="detFrame">
-          <!-- Video -->
-          <div class="v-placeholder" id="vPlaceholder">🏃</div>
+          <div class="no-video" id="noVid">No video loaded</div>
           <video id="detVideo" muted loop playsinline style="display:none;"></video>
 
-          <!-- Scan line -->
           <div class="scan-line"></div>
 
-          <!-- Bounding boxes — positioned relative to video actual render area -->
-          <!-- P01 -->
-          <div class="bbox person" id="bbox-P01" data-id="P01"
-            style="color:#2563eb;border-color:#2563eb;top:8%;left:10%;width:24%;height:72%;">
-            <div class="bbox-chip">
-              <span class="bbox-chip-text">Person 01</span>
-              <span class="bbox-conf">98.2%</span>
+          <!-- Bboxes -->
+          <div class="bbox person" id="bb-P01" data-id="P01"
+            style="color:#2563eb;border-color:#2563eb;top:8%;left:10%;width:23%;height:72%;">
+            <div class="bbox-label">
+              <span class="bbox-label-text">Person 01</span>
+              <span class="bbox-label-conf">98.2%</span>
             </div>
-            <div class="bbox-sel-indicator">✓</div>
-            <div class="corner-tl"></div><div class="corner-tr"></div>
-            <div class="corner-bl"></div><div class="corner-br"></div>
+            <div class="bbox-check">✓</div>
           </div>
 
-          <!-- P02 -->
-          <div class="bbox person" id="bbox-P02" data-id="P02"
-            style="color:#06b6d4;border-color:#06b6d4;top:10%;left:56%;width:22%;height:68%;">
-            <div class="bbox-chip">
-              <span class="bbox-chip-text">Person 02</span>
-              <span class="bbox-conf">94.7%</span>
+          <div class="bbox person" id="bb-P02" data-id="P02"
+            style="color:#0891b2;border-color:#0891b2;top:10%;left:56%;width:21%;height:68%;">
+            <div class="bbox-label">
+              <span class="bbox-label-text">Person 02</span>
+              <span class="bbox-label-conf">94.7%</span>
             </div>
-            <div class="bbox-sel-indicator">✓</div>
-            <div class="corner-tl"></div><div class="corner-tr"></div>
-            <div class="corner-bl"></div><div class="corner-br"></div>
+            <div class="bbox-check">✓</div>
           </div>
 
-          <!-- Ball -->
-          <div class="bbox non-person" id="bbox-BALL" data-id="BALL"
-            style="color:#f59e0b;border-color:#f59e0b;top:50%;left:40%;width:7%;height:10%;">
-            <div class="bbox-chip">
-              <span class="bbox-chip-text">Ball</span>
-              <span class="bbox-conf">99.1%</span>
+          <div class="bbox non-person" data-id="BALL"
+            style="color:#d97706;border-color:#d97706;top:50%;left:40%;width:7%;height:10%;">
+            <div class="bbox-label">
+              <span class="bbox-label-text">Ball</span>
+              <span class="bbox-label-conf">99.1%</span>
             </div>
           </div>
 
-          <!-- Racket -->
-          <div class="bbox non-person" id="bbox-RAC" data-id="RAC"
-            style="color:#6b7280;border-color:#6b7280;top:36%;left:30%;width:6%;height:20%;">
-            <div class="bbox-chip">
-              <span class="bbox-chip-text">Racket</span>
-              <span class="bbox-conf">91.3%</span>
+          <div class="bbox non-person" data-id="RAC"
+            style="color:#9ca3af;border-color:#9ca3af;top:36%;left:30%;width:6%;height:20%;">
+            <div class="bbox-label">
+              <span class="bbox-label-text">Racket</span>
+              <span class="bbox-label-conf">91.3%</span>
             </div>
           </div>
 
-          <!-- Top bar -->
           <div class="v-top-bar">
-            <div class="det-stats">
-              <span class="badge badge-blue">4 Detected</span>
-              <span class="badge badge-gray" id="vFileTag">sample.mp4</span>
+            <div style="display:flex;gap:5px;">
+              <span class="badge badge-gray" id="vFile">sample.mp4</span>
+              <span class="badge badge-gray" id="vRange">—</span>
             </div>
-            <div class="range-chip" id="rangeChip">00:03 — 00:12</div>
+            <span class="badge badge-blue">4 detected</span>
           </div>
-
-          <!-- Bottom bar -->
           <div class="v-bottom-bar">
-            <span class="badge badge-orange">Click a person to select</span>
-            <span class="badge badge-gray" id="selBadge" style="display:none;"></span>
+            <span class="badge badge-gray" id="vSelBadge" style="display:none;"></span>
+            <span style="font-size:11px;color:rgba(255,255,255,0.5);" id="vHint">Click a person to select</span>
           </div>
         </div>
 
-        <!-- Playback -->
-        <div class="mini-play-bar">
-          <button class="mini-play-btn" id="playBtn">▶</button>
-          <div class="mini-scrubber" id="miniScrub">
-            <div class="mini-scrub-fill" id="miniFill"></div>
+        <!-- Mini playback -->
+        <div class="mini-pb">
+          <button class="mini-play" id="miniPlayBtn">▶</button>
+          <div class="mini-scrub" id="miniScrub">
+            <div class="mini-scrub-fill" id="miniScrubFill"></div>
           </div>
-          <div class="mini-time"><span id="curTime">00:00</span> / 00:05</div>
-          <span class="badge badge-gray" id="botFileTag">—</span>
+          <div class="mini-time"><span id="miniCur">00:00</span> / <span id="miniTotal">00:00</span></div>
+          <span class="badge badge-gray" id="miniFile">—</span>
         </div>
       </div>
 
-      <!-- Right: Object list + summary -->
+      <!-- Right: list + summary -->
       <div class="select-right">
-        <div class="panel-hdr">
-          <div class="panel-title">Detected Objects</div>
-          <span class="badge badge-gray">4 total</span>
+        <div class="side-hdr">
+          <span>Detected Objects</span>
+          <span class="badge badge-gray">4</span>
         </div>
+        <div class="side-body" id="objCards"></div>
 
-        <div class="obj-cards" id="objCards"></div>
-
-        <!-- Summary -->
         <div class="sel-summary">
-          <div class="sel-summary-empty" id="sumEmpty">← Select a person to continue</div>
-          <div class="sel-summary-filled" id="sumFilled">
-            <div class="sel-id" id="sumId">—</div>
+          <div class="sel-summary-empty" id="sumEmpty">Select a person to continue</div>
+          <div class="sel-summary-info" id="sumInfo">
+            <div class="sel-name" id="sumName">—</div>
             <div class="sel-conf" id="sumConf">—</div>
-            <div class="data-row"><span class="data-key">Type</span><span class="data-val blue">Human Subject</span></div>
-            <div class="data-row"><span class="data-key">Keypoints</span><span class="data-val">17 joints (COCO-17)</span></div>
-            <div class="data-row"><span class="data-key">Visibility</span><span class="data-val green">Full body</span></div>
-            <div class="data-row"><span class="data-key">Tracking</span><span class="data-val green">✓ Stable</span></div>
+            <div class="info-row"><span class="info-key">Type</span><span class="info-val blue">Human Subject</span></div>
+            <div class="info-row"><span class="info-key">Keypoints</span><span class="info-val">17 (COCO-17)</span></div>
+            <div class="info-row"><span class="info-key">Visibility</span><span class="info-val green">Full body</span></div>
+            <div class="info-row"><span class="info-key">Tracking</span><span class="info-val green">Stable</span></div>
           </div>
         </div>
 
-        <div class="select-actions">
+        <div class="side-actions">
           <button class="btn btn-secondary btn-sm" onclick="window.location.href='trim.html'">← Back</button>
-          <button class="btn btn-primary" id="nextBtn" disabled>Start Extraction &nbsp;→</button>
+          <button class="btn btn-primary" id="nextBtn" disabled>Start Extraction →</button>
         </div>
       </div>
 
@@ -381,236 +283,106 @@
 </div>
 
 <script>
-/* ── Data ── */
-const persons = [
-  { id:'P01', label:'Person 01', color:'#2563eb', type:'human', conf:'98.2%',
-    desc:'Full body · Low occlusion · Optimal' },
-  { id:'P02', label:'Person 02', color:'#06b6d4', type:'human', conf:'94.7%',
-    desc:'Full body · Slight overlap' },
-  { id:'BALL',label:'Ball',      color:'#f59e0b', type:'object', conf:'99.1%',
-    desc:'Non-human · Not eligible' },
-  { id:'RAC', label:'Racket',    color:'#6b7280', type:'object', conf:'91.3%',
-    desc:'Non-human · Not eligible' },
+const PERSONS = [
+  { id:'P01', label:'Person 01', color:'#2563eb', conf:'98.2%', type:'human' },
+  { id:'P02', label:'Person 02', color:'#0891b2', conf:'94.7%', type:'human' },
+  { id:'BALL',label:'Ball',      color:'#d97706', conf:'99.1%', type:'object'},
+  { id:'RAC', label:'Racket',    color:'#9ca3af', conf:'91.3%', type:'object'},
 ];
 
-/* ── [노가다 구간] 영상 시간에 따른 객체 위치 데이터 ── */
-// t: 시간(초), x: left(%), y: top(%), w: width(%), h: height(%)
-const PATHS = {
-  P01: [
-    { t: 0.0, x: 52.2, y: 47.4, w: 10, h: 25 },
-    { t: 1.0, x: 51.4, y: 49.4, w: 10, h: 25 },
-    { t: 2.0, x: 44.8, y: 48.5, w: 10, h: 25 },
-    { t: 3.1, x: 34.0, y: 52.8, w: 10, h: 25 },
-    { t: 4.0, x: 36.6, y: 51.8, w: 10, h: 25 },
-    { t: 5.0, x: 52.6, y: 50.9, w: 10, h: 25 },
-  ],
-};
-
-/* 현재 시간에 맞춰 모든 박스 위치 업데이트 */
-function updateBboxes(currentTime) {
-  Object.keys(PATHS).forEach(id => {
-    const bboxEl = document.getElementById('bbox-' + id);
-    if (!bboxEl) return;
-    
-    const path = PATHS[id];
-    bboxEl.style.display = 'block'; // 일단 보이게 설정
-
-    // 현재 시간에 맞는 앞(prev) 뒤(next) 키프레임 찾기
-    let prev = path[0];
-    let next = path[path.length - 1];
-
-    for (let i = 0; i < path.length - 1; i++) {
-      if (currentTime >= path[i].t && currentTime <= path[i+1].t) {
-        prev = path[i];
-        next = path[i+1];
-        break;
-      }
-    }
-
-    let x, y, w, h;
-    if (prev === next) {
-      x = prev.x; y = prev.y; w = prev.w; h = prev.h;
-    } else {
-      // 두 키프레임 사이의 진행도 (0~1)
-      const alpha = (currentTime - prev.t) / (next.t - prev.t);
-      
-      // 선형 보간 함수
-      const lerp = (v0, v1, a) => v0 + (v1 - v0) * a;
-      
-      x = lerp(prev.x, next.x, alpha);
-      y = lerp(prev.y, next.y, alpha);
-      w = lerp(prev.w, next.w, alpha);
-      h = lerp(prev.h, next.h, alpha);
-    }
-
-    // transform을 사용하면 CPU가 아닌 GPU를 써서 훨씬 부드럽습니다.
-    bboxEl.style.left = x + '%';
-    bboxEl.style.top = y + '%';
-    bboxEl.style.width = w + '%';
-    bboxEl.style.height = h + '%';
-  });
-}
-
-/* ── Restore ── */
-const storedURL   = 'sample.mp4';
-const storedFile  = 'sample.mp4';
+const storedURL = "sample.mp4";
+const storedFile = "sample.mp4";
 const storedStart = localStorage.getItem('motio_startTime') || '00:03';
 const storedEnd   = localStorage.getItem('motio_endTime')   || '00:12';
 
-document.getElementById('rangeTag').textContent   = storedStart + ' — ' + storedEnd;
-document.getElementById('rangeChip').textContent  = storedStart + ' — ' + storedEnd;
-document.getElementById('vFileTag').textContent   = storedFile;
-document.getElementById('botFileTag').textContent = storedFile;
+document.getElementById('rangeTag').textContent = storedStart + ' — ' + storedEnd;
+document.getElementById('vRange').textContent   = storedStart + ' — ' + storedEnd;
+document.getElementById('vFile').textContent    = storedFile;
+document.getElementById('miniFile').textContent = storedFile;
 
 const detVideo = document.getElementById('detVideo');
 if (storedURL) {
-  detVideo.src = storedURL;
-  detVideo.style.display = 'block';
-  document.getElementById('vPlaceholder').style.display = 'none';
-
-detVideo.addEventListener('timeupdate', () => {
-    const t = detVideo.currentTime;
-
-    // [핵심 로직] 5초가 넘어가면 강제로 0초로 되돌립니다.
-    if (t >= 5) {
-        detVideo.currentTime = 0;
-        // 만약 멈추고 싶다면 detVideo.pause(); playBtn.textContent = '▶'; 를 대신 넣으세요.
-    }
-
-    // 1. 프로그레스 바 업데이트 (최대치를 5초로 계산)
-    const p = (t / 5) * 100; // 전체를 5초로 보고 퍼센트 계산
-    document.getElementById('miniFill').style.width = p + '%';
-
-    // 2. 시간 표시 업데이트
-    const s = Math.floor(t % 60);
-    document.getElementById('curTime').textContent = 
-        '00:' + s.toString().padStart(2, '0');
-
-    // 3. 기존에 만든 박스 업데이트 함수 호출
-    if (typeof updateBboxes === "function") {
-        updateBboxes(t);
-    }
-});
+  detVideo.src = storedURL; detVideo.style.display = 'block';
+  document.getElementById('noVid').style.display = 'none';
+  detVideo.addEventListener('loadedmetadata', () => {
+    document.getElementById('miniTotal').textContent = s2t(detVideo.duration);
+  });
+  detVideo.addEventListener('timeupdate', () => {
+    const p = detVideo.currentTime / (detVideo.duration || 1) * 100;
+    document.getElementById('miniScrubFill').style.width = p + '%';
+    document.getElementById('miniCur').textContent = s2t(detVideo.currentTime);
+  });
 }
 
-/* ── [핵심] 부드러운 움직임을 위한 애니메이션 루프 ── */
-function renderLoop() {
-    if (!detVideo.paused && !detVideo.ended) {
-        const t = detVideo.currentTime;
-
-        // 1. 5초 루프 제한 로직
-        if (t >= 5) {
-            detVideo.currentTime = 0;
-        }
-
-        // 2. 프로그레스 바 & 시간 업데이트
-        const p = (t / 5) * 100;
-        document.getElementById('miniFill').style.width = p + '%';
-        const s = Math.floor(t % 60);
-        document.getElementById('curTime').textContent = '00:' + s.toString().padStart(2, '0');
-
-        // 3. [가장 중요] 박스 위치 실시간 업데이트 (보간 실행)
-        updateBboxes(t);
-    }
-    // 다음 프레임 예약 (1초에 60번 실행)
-    requestAnimationFrame(renderLoop);
-}
-
-// 영상 로드 준비가 되면 루프 시작
-/*detVideo.addEventListener('play', () => {
-    requestAnimationFrame(renderLoop);
-});
-
-/* ── [노가다 지원 도구] 영상 클릭 시 좌표 콘솔 출력 ── */
-detVideo.addEventListener('click', function(e) {
-    // 1. 영상의 실제 크기와 위치 가져오기
-    const rect = detVideo.getBoundingClientRect();
-    
-    // 2. 클릭한 지점을 영상 내 퍼센트(%) 좌표로 변환
-    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-    const t = detVideo.currentTime.toFixed(1); // 현재 시간 (소수점 1자리)
-
-    // 3. 콘솔에 PATHS 형식으로 출력 (복사해서 바로 쓰기 좋게!)
-    console.log(`{ t: ${t}, x: ${x}, y: ${y}, w: 20, h: 70 },`);
-    
-    // 4. (보너스) 시각적 피드백: 클릭한 자리에 빨간 점 잠시 표시
-    const dot = document.createElement('div');
-    dot.style.cssText = `
-        position:absolute; left:${e.clientX - rect.left}px; top:${e.clientY - rect.top}px;
-        width:6px; height:6px; background:red; border-radius:50%; z-index:100; pointer-events:none;
-    `;
-    detVideo.parentElement.appendChild(dot);
-    setTimeout(() => dot.remove(), 500);
-});
-
-const playBtn = document.getElementById('playBtn');
-playBtn.addEventListener('click', () => {
+const miniPlayBtn = document.getElementById('miniPlayBtn');
+miniPlayBtn.addEventListener('click', () => {
   if (!storedURL) return;
-  if (detVideo.paused) { detVideo.play(); playBtn.textContent = '⏸'; }
-  else { detVideo.pause(); playBtn.textContent = '▶'; }
+  detVideo.paused ? detVideo.play() : detVideo.pause();
+  miniPlayBtn.textContent = detVideo.paused ? '▶' : '⏸';
+});
+document.getElementById('miniScrub').addEventListener('click', e => {
+  if (!storedURL || !detVideo.duration) return;
+  const r = document.getElementById('miniScrub').getBoundingClientRect();
+  detVideo.currentTime = Math.max(0, Math.min(1, (e.clientX-r.left)/r.width)) * detVideo.duration;
 });
 
-/* ── Selected state ── */
 let selectedId = null;
 
-/* ── Render object cards ── */
+/* Render cards */
 function renderCards() {
-  const container = document.getElementById('objCards');
-  container.innerHTML = persons.map(p => `
+  document.getElementById('objCards').innerHTML = PERSONS.map(p => `
     <div class="obj-card ${p.type==='object'?'non-person':''} ${selectedId===p.id?'selected':''}"
-         id="card-${p.id}"
-         onclick="${p.type==='human'?`selectPerson('${p.id}')`:''}" >
-      <div class="obj-card-color" style="background:${p.color};${selectedId===p.id?'box-shadow:0 0 8px '+p.color+'88;':''}"></div>
-      <div class="obj-card-info">
-        <div class="obj-card-name">${p.label}</div>
-        <div class="obj-card-sub">${p.desc}</div>
-      </div>
-      <div class="obj-card-right">
-        <div class="obj-card-check">✓</div>
-        <span class="badge ${p.type==='human'?'badge-blue':'badge-orange'}" style="font-size:9px;">${p.type==='human'?'Human':'Object'}</span>
-        <span class="mono" style="font-size:9px;color:var(--text-muted);">${p.conf}</span>
-      </div>
+         onclick="${p.type==='human'?`selectPerson('${p.id}')`:''}"
+         id="card-${p.id}">
+      <div class="obj-card-dot" style="background:${p.color};"></div>
+      <div class="obj-card-name">${p.label}</div>
+      <span class="badge ${p.type==='human'?'badge-blue':'badge-gray'}" style="font-size:10px;">${p.type==='human'?'Human':'Object'}</span>
+      <span style="font-size:10px;color:var(--text-4);">${p.conf}</span>
+      <div class="obj-card-check">✓</div>
     </div>`).join('');
 }
 
 function selectPerson(id) {
   selectedId = id;
-  const p = persons.find(x => x.id === id);
-
-  /* Store */
+  const p = PERSONS.find(x => x.id === id);
   localStorage.setItem('motio_selectedId',    id);
   localStorage.setItem('motio_selectedLabel', p.label);
 
-  /* Bbox highlight */
+  /* Bbox */
   document.querySelectorAll('.bbox').forEach(b => {
-    b.classList.remove('selected');
-    b.style.filter = b.dataset.id === id ? '' : 'brightness(0.4)';
+    if (b.dataset.id === id) { b.classList.add('selected'); b.classList.remove('dimmed'); }
+    else if (!b.classList.contains('non-person')) { b.classList.remove('selected'); b.classList.add('dimmed'); }
   });
-  document.getElementById('bbox-' + id).classList.add('selected');
 
-  /* Bottom badge on video */
-  const sb = document.getElementById('selBadge');
+  /* Bottom badge */
+  const sb = document.getElementById('vSelBadge');
   sb.textContent = '✓ ' + p.label + ' selected';
   sb.style.display = 'inline-flex';
   sb.className = 'badge badge-blue';
+  document.getElementById('vHint').style.display = 'none';
 
-  /* Summary panel */
+  /* Summary */
   document.getElementById('sumEmpty').style.display = 'none';
-  const sf = document.getElementById('sumFilled');
-  sf.classList.add('visible');
-  document.getElementById('sumId').textContent   = p.label;
-  document.getElementById('sumConf').textContent = 'Confidence: ' + p.conf + ' · Tracking: stable';
+  document.getElementById('sumInfo').classList.add('show');
+  document.getElementById('sumName').textContent = p.label;
+  document.getElementById('sumConf').textContent = 'Confidence ' + p.conf;
 
-  /* Next btn */
   document.getElementById('nextBtn').disabled = false;
-
   renderCards();
 }
 
-renderCards();
+/* Bbox click */
+document.querySelectorAll('.bbox.person').forEach(b => {
+  b.addEventListener('click', () => selectPerson(b.dataset.id));
+});
 
+renderCards();
 document.getElementById('nextBtn').addEventListener('click', () => window.location.href = 'waiting.html');
+
+function s2t(s) {
+  if (!s || isNaN(s)) return '00:00';
+  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
+}
 </script>
 </body>
 </html>

@@ -6,175 +6,86 @@
 <title>Motio — Preparing</title>
 <link rel="stylesheet" href="shared.css">
 <style>
-/* Full viewport, click anywhere */
 .waiting-page {
   width: 100%; height: 100%;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  cursor: pointer; position: relative; overflow: hidden;
-  background: var(--bg-0);
-}
-
-/* Ambient glow */
-.glow-1 {
-  position: absolute;
-  width: 600px; height: 600px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(37,99,235,0.1) 0%, transparent 70%);
-  top: 50%; left: 50%; transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.glow-2 {
-  position: absolute;
-  width: 300px; height: 300px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 70%);
-  top: 30%; left: 30%;
-  pointer-events: none;
-}
-
-.waiting-content {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0; z-index: 2; max-width: 560px; width: 100%; padding: 0 24px;
-  animation: fade-up 0.5s ease both;
-}
-
-/* ── Spinner ── */
-.spinner-wrap {
-  position: relative; width: 100px; height: 100px;
-  margin-bottom: 32px;
-}
-.spin-ring {
-  position: absolute; inset: 0; border-radius: 50%;
-  border: 1.5px solid transparent;
-}
-.spin-ring-1 {
-  border-top-color: var(--brand);
-  border-right-color: rgba(37,99,235,0.3);
-  animation: spin 1.8s linear infinite;
-}
-.spin-ring-2 {
-  inset: 12px;
-  border-top-color: var(--accent);
-  border-right-color: rgba(6,182,212,0.3);
-  animation: spin 1.2s linear infinite reverse;
-}
-.spin-ring-3 {
-  inset: 24px;
-  border: 1px solid rgba(37,99,235,0.15);
-  animation: spin 3s linear infinite;
-}
-.spin-center {
-  position: absolute; inset: 34px;
-  background: var(--brand-dim);
-  border: 1px solid rgba(37,99,235,0.3);
-  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px;
+  cursor: pointer; background: #fff;
 }
 
-/* Text */
-.w-eyebrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; font-weight: 500;
-  text-transform: uppercase; letter-spacing: 2.5px;
-  color: var(--brand-light); margin-bottom: 12px;
-  display: flex; align-items: center; gap: 6px;
+.waiting-box {
+  width: 480px; text-align: center;
+  animation: fade-up 0.4s ease both;
 }
-.w-eyebrow-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand-light); animation: blink 1s infinite; }
 
+/* Spinner */
+.spinner {
+  width: 52px; height: 52px; margin: 0 auto 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.w-label {
+  font-size: 11px; font-weight: 600; color: var(--brand);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
 .w-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px; font-weight: 800; letter-spacing: -0.5px;
-  text-align: center; line-height: 1.1; margin-bottom: 10px;
-  color: var(--text-primary);
+  font-size: 22px; font-weight: 600; color: var(--text-1);
+  margin-bottom: 6px;
 }
-.w-title em { font-style: normal; color: var(--brand-light); }
+.w-desc { font-size: 13px; color: var(--text-3); margin-bottom: 28px; line-height: 1.6; }
 
-.w-sub {
-  font-size: 13px; color: var(--text-secondary);
-  text-align: center; line-height: 1.7; margin-bottom: 28px;
-}
-
-/* ── Context pills ── */
-.context-row {
-  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
-  margin-bottom: 28px;
-}
-
-/* ── Step row ── */
+/* Steps */
 .step-row {
-  display: flex; align-items: center; gap: 0;
-  width: 100%; margin-bottom: 24px;
+  display: flex; gap: 0; margin-bottom: 24px;
   position: relative;
 }
 .step-row::before {
-  content: ''; position: absolute; top: 18px; left: 18px; right: 18px;
-  height: 1px; background: var(--border); z-index: 0;
+  content: ''; position: absolute; top: 16px; left: 16px; right: 16px;
+  height: 1px; background: var(--border);
 }
-.w-step {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  position: relative; z-index: 1;
-}
+.w-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; }
 .w-step-node {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: var(--bg-2); border: 1px solid var(--border);
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #fff; border: 1.5px solid var(--border);
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px; transition: all 0.4s;
+  font-size: 12px; color: var(--text-4);
+  transition: all 0.3s;
 }
-.w-step.done .w-step-node {
-  background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4);
-  box-shadow: 0 0 12px rgba(16,185,129,0.25);
-}
-.w-step.active .w-step-node {
-  background: var(--brand-dim); border-color: var(--brand);
-  box-shadow: 0 0 16px var(--brand-glow);
-  animation: dot-pulse 1.5s infinite;
-}
-.w-step-lbl {
-  font-family: 'JetBrains Mono', monospace; font-size: 9px;
-  text-transform: uppercase; letter-spacing: 0.5px;
-  text-align: center; color: var(--text-muted);
-  max-width: 70px;
-}
+.w-step.done .w-step-node { border-color: var(--success); background: #d1fae5; color: var(--success); }
+.w-step.active .w-step-node { border-color: var(--brand); background: var(--brand-light); color: var(--brand); animation: blink 1.2s infinite; }
+.w-step-lbl { font-size: 10px; color: var(--text-4); text-align: center; max-width: 60px; }
 .w-step.done .w-step-lbl { color: var(--success); }
-.w-step.active .w-step-lbl { color: var(--brand-light); }
+.w-step.active .w-step-lbl { color: var(--brand); }
 
 /* Progress bar */
-.w-progress-wrap {
-  width: 100%; background: var(--bg-3); border-radius: 4px;
-  height: 5px; overflow: hidden; margin-bottom: 20px;
-}
-.w-progress-fill {
-  height: 100%; border-radius: 4px;
-  background: linear-gradient(90deg, var(--brand), var(--accent));
-  box-shadow: 0 0 10px var(--brand-glow);
-  transition: width 0.6s ease;
+.w-prog { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 16px; }
+.w-prog-fill { height: 100%; background: var(--brand); border-radius: 2px; transition: width 0.5s ease; }
+
+/* Context */
+.w-context {
+  display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;
 }
 
-/* Status msg */
-.w-status {
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: var(--text-muted); margin-bottom: 28px;
-  min-height: 18px; transition: all 0.3s;
-  text-align: center;
-}
-.w-status span { color: var(--brand-light); }
+.w-status { font-size: 12px; color: var(--text-3); margin-bottom: 24px; min-height: 18px; }
+.w-status span { color: var(--brand); font-weight: 500; }
 
-/* Click hint */
-.click-pill {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 18px; border-radius: 100px;
-  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-  font-size: 12px; color: var(--text-muted);
+.click-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--bg-sub);
+  font-size: 12px; color: var(--text-3);
 }
-.click-pill kbd {
-  background: var(--bg-3); border: 1px solid var(--border);
-  border-radius: 4px; padding: 1px 7px;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-secondary);
+.click-hint kbd {
+  background: #fff; border: 1px solid var(--border-mid);
+  border-radius: 3px; padding: 1px 6px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2);
 }
 </style>
 </head>
 <body>
-
 <nav class="nav">
   <a class="nav-logo" href="upload.html"><div class="nav-logo-mark">M</div>Motio</a>
   <div class="nav-steps">
@@ -184,133 +95,82 @@
     <div class="nav-step active"><span class="dot"></span>Extract</div>
     <div class="nav-step"><span class="dot"></span>Result</div>
   </div>
-  <div class="nav-right">
-    <span class="badge badge-orange">● PREPARING</span>
-  </div>
+  <div class="nav-right"><span class="badge badge-orange">Preparing</span></div>
 </nav>
 
 <div class="page">
-  <div class="waiting-page" id="waitingPage">
-    <div class="glow-1"></div>
-    <div class="glow-2"></div>
+  <div class="waiting-page" id="waitPage">
+    <div class="waiting-box">
+      <div class="spinner"></div>
+      <div class="w-label" id="wLabel">Initializing</div>
+      <div class="w-title">Preparing Motion Extraction</div>
+      <div class="w-desc">Loading the motion analysis model and preparing your video segment.</div>
 
-    <div class="waiting-content">
-      <div class="spinner-wrap">
-        <div class="spin-ring spin-ring-1"></div>
-        <div class="spin-ring spin-ring-2"></div>
-        <div class="spin-ring spin-ring-3"></div>
-        <div class="spin-center">⚙️</div>
+      <div class="w-context">
+        <span class="badge badge-gray" id="wFile">—</span>
+        <span class="badge badge-blue" id="wRange">—</span>
+        <span class="badge badge-blue" id="wTarget">—</span>
       </div>
 
-      <div class="w-eyebrow">
-        <span class="w-eyebrow-dot"></span>
-        <span id="eyebrowText">Initializing Analysis Engine</span>
-      </div>
-
-      <div class="w-title">Preparing <em>Motion Extraction</em></div>
-      <div class="w-sub">
-        Loading the motion analysis model and preparing your video segment.<br>
-        Large models may take a few seconds to initialize.
-      </div>
-
-      <!-- Context -->
-      <div class="context-row">
-        <span class="badge badge-gray" id="ctxFile">sample.mp4</span>
-        <span class="badge badge-cyan" id="ctxRange">00:03 → 00:12</span>
-        <span class="badge badge-blue" id="ctxTarget">Person 01</span>
-      </div>
-
-      <!-- Steps -->
       <div class="step-row">
-        <div class="w-step done" id="ws1">
-          <div class="w-step-node">✓</div>
-          <div class="w-step-lbl">Upload<br>Verified</div>
-        </div>
-        <div class="w-step done" id="ws2">
-          <div class="w-step-node">✓</div>
-          <div class="w-step-lbl">Segment<br>Trimmed</div>
-        </div>
-        <div class="w-step active" id="ws3">
-          <div class="w-step-node">⚙</div>
-          <div class="w-step-lbl">Model<br>Loading</div>
-        </div>
-        <div class="w-step" id="ws4">
-          <div class="w-step-node">📡</div>
-          <div class="w-step-lbl">Pose<br>Init</div>
-        </div>
-        <div class="w-step" id="ws5">
-          <div class="w-step-node">🎯</div>
-          <div class="w-step-lbl">Object<br>Lock</div>
-        </div>
+        <div class="w-step done" id="ws1"><div class="w-step-node">✓</div><div class="w-step-lbl">Upload</div></div>
+        <div class="w-step done" id="ws2"><div class="w-step-node">✓</div><div class="w-step-lbl">Trimmed</div></div>
+        <div class="w-step active" id="ws3"><div class="w-step-node">⚙</div><div class="w-step-lbl">Loading</div></div>
+        <div class="w-step" id="ws4"><div class="w-step-node">4</div><div class="w-step-lbl">Pose Init</div></div>
+        <div class="w-step" id="ws5"><div class="w-step-node">5</div><div class="w-step-lbl">Object Lock</div></div>
       </div>
 
-      <div class="w-progress-wrap">
-        <div class="w-progress-fill" id="wProgFill" style="width:38%"></div>
-      </div>
+      <div class="w-prog"><div class="w-prog-fill" id="wFill" style="width:35%"></div></div>
 
-      <div class="w-status" id="wStatus">
-        Loading <span>MotionBERT</span> checkpoint...
-      </div>
+      <div class="w-status" id="wStatus">Loading <span>MotionBERT</span> checkpoint...</div>
 
-      <div class="click-pill">
-        <kbd>Click anywhere</kbd> to skip and proceed to motion extraction
-      </div>
+      <div class="click-hint"><kbd>Click anywhere</kbd> to skip and proceed</div>
     </div>
   </div>
 </div>
 
 <script>
-/* ── Restore state ── */
 const fn    = localStorage.getItem('motio_fileName')      || 'sample.mp4';
 const start = localStorage.getItem('motio_startTime')     || '00:03';
 const end   = localStorage.getItem('motio_endTime')       || '00:12';
 const label = localStorage.getItem('motio_selectedLabel') || 'Person 01';
+document.getElementById('wFile').textContent   = fn;
+document.getElementById('wRange').textContent  = start + ' → ' + end;
+document.getElementById('wTarget').textContent = label;
 
-document.getElementById('ctxFile').textContent   = fn;
-document.getElementById('ctxRange').textContent  = start + ' → ' + end;
-document.getElementById('ctxTarget').textContent = label;
-
-/* ── Progress animation ── */
-let pct = 38;
-const messages = [
-  { pct:38,  msg: 'Loading <span>MotionBERT</span> checkpoint...' },
-  { pct:55,  msg: 'Initializing <span>COCO-17</span> skeleton model...' },
-  { pct:68,  msg: 'Parsing video segment <span>' + start + '→' + end + '</span>...' },
-  { pct:80,  msg: 'Calibrating <span>pose estimator</span>...' },
-  { pct:91,  msg: 'Locking target: <span>' + label + '</span>...' },
-  { pct:97,  msg: 'Object tracking <span>ready</span> ✓' },
+const msgs = [
+  { pct:35, txt:'Loading <span>MotionBERT</span> checkpoint...' },
+  { pct:52, txt:'Initializing <span>COCO-17</span> skeleton model...' },
+  { pct:67, txt:'Parsing video segment <span>' + start + '→' + end + '</span>...' },
+  { pct:80, txt:'Calibrating <span>pose estimator</span>...' },
+  { pct:92, txt:'Locking target: <span>' + label + '</span>...' },
 ];
-let mIdx = 0;
-const fill   = document.getElementById('wProgFill');
+let mi = 0;
+const fill = document.getElementById('wFill');
 const status = document.getElementById('wStatus');
-const eyebrow = document.getElementById('eyebrowText');
 
-function activateStep(doneN, activeN) {
+function activateStep(done, active) {
   for (let i = 1; i <= 5; i++) {
     const el = document.getElementById('ws'+i);
-    if (i < doneN) el.className = 'w-step done';
-    else if (i === doneN) { el.className = 'w-step done'; el.querySelector('.w-step-node').textContent = '✓'; }
-    else if (i === activeN) el.className = 'w-step active';
-    else el.className = 'w-step';
+    const node = el.querySelector('.w-step-node');
+    if (i <= done) { el.className='w-step done'; node.textContent='✓'; }
+    else if (i === active) { el.className='w-step active'; node.textContent='⚙'; }
+    else { el.className='w-step'; node.textContent=i; }
   }
 }
 
-let timer = setInterval(() => {
-  if (mIdx < messages.length) {
-    pct = messages[mIdx].pct;
-    status.innerHTML = messages[mIdx].msg;
-    if (mIdx === 2) { activateStep(3, 4); eyebrow.textContent = 'Parsing Video Segment'; }
-    if (mIdx === 4) { activateStep(4, 5); eyebrow.textContent = 'Locking Target Object'; }
-    mIdx++;
-    fill.style.width = pct + '%';
+const t = setInterval(() => {
+  if (mi < msgs.length) {
+    const m = msgs[mi];
+    fill.style.width = m.pct + '%';
+    status.innerHTML = m.txt;
+    if (mi === 2) activateStep(3, 4);
+    if (mi === 4) activateStep(4, 5);
+    mi++;
   }
 }, 900);
 
-/* Click to proceed */
-document.getElementById('waitingPage').addEventListener('click', () => {
-  clearInterval(timer);
-  window.location.href = 'processing.html';
-});
+document.getElementById('waitPage').addEventListener('click', () => { clearInterval(t); window.location.href = 'processing.html'; });
 </script>
 </body>
 </html>
