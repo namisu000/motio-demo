@@ -275,8 +275,8 @@ function fmtBytes(b) {
 function handleFile(file) {
   if (!file.type.startsWith('video/')) { alert('Please select an MP4 or MOV file.'); return; }
   const url = URL.createObjectURL(file);
-  localStorage.setItem('motio_videoURL',  url);
-  localStorage.setItem('motio_fileName',  file.name);
+  <!-- localStorage.setItem('motio_videoURL',  url); -->
+  <!-- localStorage.setItem('motio_fileName',  file.name); -->
   localStorage.setItem('motio_fileSize',  fmtBytes(file.size));
   localStorage.setItem('motio_fileType',  file.type.split('/')[1].toUpperCase());
 
@@ -290,7 +290,7 @@ function handleFile(file) {
 }
 
 // Restore
-const stored = localStorage.getItem('motio_videoURL');
+const stored = null;
 if (stored) {
   vPreview.src = stored;
   document.getElementById('fileName').textContent = localStorage.getItem('motio_fileName') || 'video';

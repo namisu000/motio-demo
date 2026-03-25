@@ -311,7 +311,7 @@
 
           <div class="sep"></div>
 
-          <div>
+          <!-- <div>
             <div class="sec-lbl" style="margin-bottom:8px;">Objects in clip</div>
             <div class="obj-item">
               <span class="obj-dot" style="background:#2563eb;"></span>
@@ -325,7 +325,7 @@
               <span class="badge badge-blue" style="font-size:10px;">Human</span>
               <span class="obj-dur" id="od-P02">—</span>
             </div>
-          </div>
+          </div> -->
         </div>
       </div>
 
@@ -339,20 +339,17 @@
           </div>
           <video id="mainVideo" playsinline></video>
 
-          <div class="range-vignette-l" id="vigL"></div>
-          <div class="range-vignette-r" id="vigR"></div>
-
           <div class="play-icon" id="playIcon">
             <div class="play-icon-inner" id="playIconInner">▶</div>
           </div>
-
+<!-- 
           <div class="v-labels">
             <div style="display:flex;gap:5px;">
               <span class="badge badge-blue">Person 01</span>
               <span class="badge badge-gray">Person 02</span>
             </div>
             <span class="badge badge-orange" id="vRangeBadge">—</span>
-          </div>
+          </div> -->
         </div>
 
         <!-- Playback bar -->
@@ -381,29 +378,18 @@
               <span class="badge badge-gray">30 fps</span>
             </div>
           </div>
-          <div class="tl-ruler-cont">
-              <div class="tl-track-lbl">
-              <span class="tl-track-dot" style="background:transparent;"></span>
-              <span style="color: transparent">Person 01</span>
-            </div>
-            <div class="tl-ruler" id="tlRuler"></div>
+          <div class="tl-track-lbl">
           </div>
+          <div class="tl-ruler" id="tlRuler"></div>
 
-
-          <div class="tl-range-row-cont">
-            <div class="tl-track-lbl">
-              <span class="tl-track-dot" style="background:transparent;"></span>
-              <span style="color: transparent">Person 01</span>
-            </div>
-            <div class="tl-range-row" id="tlRow">
-              <div class="tl-bg"></div>
-              <div class="tl-dim-l" id="tlDimL"></div>
-              <div class="tl-dim-r" id="tlDimR"></div>
-              <div class="tl-sel-fill" id="tlFill"></div>
-              <div class="tl-ph" id="tlPH" style="left:0%"></div>
-              <div class="tl-handle" id="tlHL" style="left:10%"></div>
-              <div class="tl-handle" id="tlHR" style="left:45%"></div>
-            </div>
+          <div class="tl-range-row" id="tlRow">
+            <div class="tl-bg"></div>
+            <div class="tl-dim-l" id="tlDimL"></div>
+            <div class="tl-dim-r" id="tlDimR"></div>
+            <div class="tl-sel-fill" id="tlFill"></div>
+            <div class="tl-ph" id="tlPH" style="left:0%"></div>
+            <div class="tl-handle" id="tlHL" style="left:10%"></div>
+            <div class="tl-handle" id="tlHR" style="left:45%"></div>
           </div>
 
           <div class="tl-tracks" id="tlTracks"></div>
@@ -458,9 +444,7 @@
 
 <script>
 /* ── Data ── */
-const OBJECTS = [
-  { id:'P01',  sp:0,  ep:15, color:'#2563eb' },
-  { id:'P02',  sp:20,  ep:35,  color:'#0891b2' },
+const OBJECTS = [,
 ];
 const SPEEDS = [0.25, 0.5, 1, 1.5, 2];
 const FPS = 30;
@@ -479,6 +463,7 @@ const inEnd    = document.getElementById('inEnd');
 const speedBtn = document.getElementById('speedBtn');
 
 let dur = 0, startSec = 0, endSec = 0, ready = false;
+let lastTime = 0; // 재생 시점 상태를 추적하기 위한 변수
 let dragging = null, scrubbing = false, speedIdx = 2;
 
 /* ── Restore video ── */
@@ -525,6 +510,15 @@ video.addEventListener('timeupdate', () => {
   document.getElementById('tlPH').style.left         = p + '%';
   document.getElementById('pbCur').textContent        = s2t(video.currentTime);
   document.querySelectorAll('.tl-track-ph').forEach(el => el.style.left = p + '%');
+
+   // --- 추가된 구간 반복 로직 ---
+  if (!video.paused) {
+    // 재생 중이고, 방금 전까지 설정 구간(endSec) 내에 있었는데 지금은 넘어섰다면
+    if (lastTime <= endSec && video.currentTime >= endSec) {
+      video.currentTime = startSec; // 구간 시작점으로 이동
+    }
+  }
+  lastTime = video.currentTime; // 현재 시간을 저장하여 다음 프레임에서 비교
 });
 
 video.addEventListener('play',  () => { playBtn.textContent = '⏸'; playIcon.classList.remove('show'); });
@@ -534,7 +528,11 @@ video.addEventListener('pause', () => {
   playIcon.classList.add('show');
   setTimeout(() => playIcon.classList.remove('show'), 650);
 });
-video.addEventListener('ended', () => { video.currentTime = startSec; video.play(); });
+video.addEventListener('ended', () => { 
+  <!-- video.currentTime = startSec; video.play();  -->
+  video.currentTime = 0; 
+  video.play(); 
+});
 
 /* ── Controls ── */
 function togglePlay() { if (!ready) return; video.paused ? video.play() : video.pause(); }
@@ -623,10 +621,7 @@ function renderAll() {
   document.getElementById('tlDimR').style.width  = (100 - ep) + '%';
   document.getElementById('scrubSel').style.left  = sp + '%';
   document.getElementById('scrubSel').style.width = wp + '%';
-  document.getElementById('vigL').style.width = sp + '%';
-  document.getElementById('vigR').style.width = (100 - ep) + '%';
   document.querySelectorAll('.tl-sel-ov').forEach(el => { el.style.left = sp + '%'; el.style.width = wp + '%'; });
-  document.getElementById('vRangeBadge').textContent = s2t(startSec) + ' — ' + s2t(endSec);
 }
 
 function buildRuler() {
@@ -692,7 +687,12 @@ function save() {
 window.seekObjStart = id => {
   if (!ready) return;
   const o = OBJECTS.find(x => x.id === id);
-  if (o) video.currentTime = o.sp / 100 * dur;
+  if (o) {
+    video.currentTime = o.sp / 100 * dur;
+    startSec = video.currentTime;
+    endSec = o.ep / 100 * dur;
+    renderAll(); updateInfo(); save();
+  }
 };
 
 function s2t(sec) {

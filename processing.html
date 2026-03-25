@@ -57,7 +57,6 @@
 }
 .preview-area video {
   width: 100%; height: 100%; object-fit: contain;
-  opacity: 0.5; filter: saturate(0.4);
 }
 .preview-area .no-video {
   width: 100%; height: 100%; background: var(--bg-subtle);
@@ -85,7 +84,7 @@
 .mpb { width: 24px; height: 24px; border-radius: 50%; background: var(--brand); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; }
 .mpb:hover { background: var(--accent); }
 .mps { flex: 1; height: 3px; background: var(--bg-subtle); border-radius: 2px; overflow: hidden; }
-.mps-fill { height: 100%; background: var(--brand); animation: play-fill 3s linear infinite; }
+.mps-fill { height: 100%; background: var(--brand); animation: play-fill 7s linear infinite; }
 @keyframes play-fill { 0%{width:0%} 100%{width:100%} }
 .mpt { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); white-space: nowrap; }
 
@@ -212,9 +211,9 @@
           <div class="no-video" id="resPH">No video</div>
           <video id="resVideo" muted loop playsinline style="display:none;"></video>
 
-          <div class="skel-ov" id="skelOv">
-            <svg id="resSvg" width="160" height="270" viewBox="0 0 160 270" style="opacity:0.95;"></svg>
-          </div>
+          <!-- <div class="skel-ov" id="skelOv"> -->
+            <!-- <svg id="resSvg" width="160" height="270" viewBox="0 0 160 270" style="opacity:0.95;"></svg> -->
+          <!-- </div> -->
 
           <div class="curves-view" id="curvesView"></div>
 
@@ -327,7 +326,7 @@
 </div>
 
 <script>
-const url   = 'sample.mp4';
+const url   = 'video_01_00.mp4';
 const fn    = 'sample.mp4';
 const start = localStorage.getItem('motio_startTime')     || '00:03';
 const end   = localStorage.getItem('motio_endTime')       || '00:12';
