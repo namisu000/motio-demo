@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motio — Processing</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.proc-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  width: 100%; height: 100%; overflow: hidden;
+}
+
+/* Left: video + skeleton */
+.proc-left {
+  display: flex; flex-direction: column; overflow: hidden; background: #fff;
+  border-right: 1px solid var(--border);
+}
+
+.proc-video-wrap {
+  flex: 1; min-height: 0; position: relative; background: #111; overflow: hidden;
+}
+.proc-video-wrap video {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  opacity: 0.45; filter: saturate(0.5);
+}
+.proc-video-wrap .no-video {
+  width: 100%; height: 100%; background: var(--bg-subtle);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--text-4);
+}
+
+/* Skeleton SVG overlay */
+.skel-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 3;
+}
+
+/* Video badges */
+.proc-v-top {
+  position: absolute; top: 10px; left: 10px; right: 10px;
+  display: flex; justify-content: space-between; z-index: 5; pointer-events: none;
+}
+.proc-v-bot {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 12px; z-index: 5; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+}
+
+/* Frame progress bar under video */
+.frame-bar {
+  flex-shrink: 0; border-top: 1px solid var(--border);
+  padding: 8px 14px; display: flex; align-items: center; gap: 10px;
+  background: var(--bg-sub);
+}
+.fb-label { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.fb-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.fb-fill { height: 100%; background: var(--brand); border-radius: 2px; width: 0%; transition: width 0.3s; }
+.fb-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.fb-count em { font-style: normal; color: var(--brand); }
+
+/* Right: stages */
+.proc-right {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-sub); cursor: pointer;
+}
+.proc-right-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+
+/* Context strip */
+.ctx-box {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.ctx-item .ctx-k { font-size: 10px; color: var(--text-4); margin-bottom: 1px; }
+.ctx-item .ctx-v { font-size: 12px; font-weight: 500; color: var(--text-1); }
+.ctx-item .ctx-v.blue { color: var(--brand); }
+
+/* Overall progress */
+.overall { }
+.overall-hdr { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+.overall-key { color: var(--text-3); }
+.overall-pct { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-1); }
+.overall-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.overall-fill { height: 100%; background: var(--brand); border-radius: 3px; transition: width 0.4s; }
+
+/* Stage cards */
+.stage {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+  display: flex; gap: 10px; align-items: flex-start;
+  transition: border-color 0.2s;
+}
+.stage.active { border-color: var(--brand); background: var(--brand-light); }
+.stage.done { border-color: var(--success); background: #f0fdf4; }
+.stage-ico {
+  width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0;
+  background: var(--bg-subtle); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.stage.active .stage-ico { background: #fff; border-color: var(--brand); }
+.stage.done .stage-ico { background: #d1fae5; border-color: var(--success); }
+.stage-body { flex: 1; min-width: 0; }
+.stage-name { font-size: 12px; font-weight: 500; color: var(--text-3); margin-bottom: 1px; }
+.stage.active .stage-name { color: var(--text-1); }
+.stage.done .stage-name { color: var(--text-2); }
+.stage-detail { font-size: 11px; color: var(--text-4); }
+.stage.active .stage-detail { color: var(--brand); }
+.stage.done .stage-detail { color: var(--success); }
+.stage-status { font-size: 10px; font-weight: 600; color: var(--text-4); align-self: center; white-space: nowrap; }
+.stage.active .stage-status { color: var(--warning); }
+.stage.done .stage-status { color: var(--success); }
+
+/* Log */
+.log-box {
+  background: var(--bg-subtle); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+}
+.log-hdr { font-size: 10px; color: var(--text-4); margin-bottom: 6px; }
+.log-line { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); line-height: 1.9; }
+.log-line.blue { color: var(--brand); }
+.log-line.green { color: var(--success); }
+
+/* Actions */
+.proc-actions {
+  flex-shrink: 0; padding: 12px 16px; border-top: 1px solid var(--border);
+  background: #fff; display: flex; flex-direction: column; gap: 6px;
+}
+.click-note { text-align: center; font-size: 11px; color: var(--text-4); }
+.click-note kbd {
+  background: var(--bg-subtle); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1px 5px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2);
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-logo" href="upload.html"><div class="nav-logo-mark">M</div>Motio</a>
+  <div class="nav-steps">
+    <div class="nav-step done"><span class="dot"></span>Upload</div>
+    <div class="nav-step done"><span class="dot"></span>Clip Range</div>
+    <div class="nav-step done"><span class="dot"></span>Detect</div>
+    <div class="nav-step active"><span class="dot"></span>Extract</div>
+    <div class="nav-step"><span class="dot"></span>Result</div>
+  </div>
+  <div class="nav-right">
+    <span class="badge badge-orange" id="procBadge">Processing</span>
+    <span class="badge badge-gray">Step 4 of 6</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-hdr anim">
+    <div>
+      <div class="page-title">Motion <em>Extraction</em></div>
+      <div class="page-desc">Reconstructing 3D pose data frame by frame</div>
+    </div>
+    <div class="page-hdr-right">
+      <span class="badge badge-blue" id="hTarget">—</span>
+      <span class="badge badge-gray" id="hRange">—</span>
+    </div>
+  </div>
+
+  <div class="page-body anim-1">
+    <div class="proc-body">
+
+      <!-- Left -->
+      <div class="proc-left">
+        <div class="proc-video-wrap" id="procVWrap">
+          <div class="no-video" id="procNoVid">No video</div>
+          <video id="procVideo" muted loop playsinline style="display:none;"></video>
+
+          <div class="skel-overlay">
+            <svg id="skelSvg" width="180" height="300" viewBox="0 0 180 300" style="opacity:0.9;"></svg>
+          </div>
+
+          <div class="proc-v-top">
+            <span class="badge badge-gray" id="procVFile">—</span>
+            <span class="badge badge-orange" id="procVStage">Object Lock</span>
+          </div>
+          <div class="proc-v-bot">
+            <span class="badge badge-blue" id="procVTarget">—</span>
+          </div>
+        </div>
+
+        <div class="frame-bar">
+          <span class="fb-label">Frame</span>
+          <div class="fb-track"><div class="fb-fill" id="fbFill"></div></div>
+          <span class="fb-count"><em id="fbCur">0</em> / 270</span>
+        </div>
+      </div>
+
+      <!-- Right -->
+      <div class="proc-right" id="procRight">
+        <div class="side-hdr">Extraction Pipeline</div>
+        <div class="proc-right-body">
+
+          <div class="ctx-box">
+            <div class="ctx-item"><div class="ctx-k">Source</div><div class="ctx-v" id="ctxFile">—</div></div>
+            <div class="ctx-item"><div class="ctx-k">Target</div><div class="ctx-v blue" id="ctxTarget">—</div></div>
+            <div class="ctx-item"><div class="ctx-k">Range</div><div class="ctx-v blue" id="ctxRange">—</div></div>
+            <div class="ctx-item"><div class="ctx-k">Skeleton</div><div class="ctx-v">COCO-17</div></div>
+          </div>
+
+          <div class="overall">
+            <div class="overall-hdr">
+              <span class="overall-key">Overall Progress</span>
+              <span class="overall-pct" id="opct">0%</span>
+            </div>
+            <div class="overall-bar"><div class="overall-fill" id="ofill" style="width:0%"></div></div>
+          </div>
+
+          <div id="stagesList"></div>
+
+          <div class="log-box">
+            <div class="log-hdr">Processing log</div>
+            <div id="logContent"></div>
+          </div>
+        </div>
+
+        <div class="proc-actions">
+          <div class="click-note"><kbd>Click anywhere</kbd> to proceed when ready</div>
+          <button class="btn btn-primary" id="nextBtn" disabled>View Results →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  
+const fn    = 'sample.mp4';
+const start = localStorage.getItem('motio_startTime')     || '00:03';
+const end   = localStorage.getItem('motio_endTime')       || '00:12';
+const label = localStorage.getItem('motio_selectedLabel') || 'Person 01';
+const url   = 'sample.mp4';
+
+document.getElementById('hTarget').textContent   = label;
+document.getElementById('hRange').textContent    = start + ' → ' + end;
+document.getElementById('ctxFile').textContent   = fn;
+document.getElementById('ctxTarget').textContent = label;
+document.getElementById('ctxRange').textContent  = start + ' → ' + end;
+document.getElementById('procVFile').textContent  = fn;
+document.getElementById('procVTarget').textContent = label;
+
+if (url) {
+  const v = document.getElementById('procVideo');
+  v.src = url; v.style.display = 'block';
+  document.getElementById('procNoVid').style.display = 'none';
+  v.play().catch(()=>{});
+}
+
+/* ── Skeleton ── */
+const J = [
+  {x:90,y:22},{x:82,y:17},{x:98,y:17},{x:74,y:22},{x:106,y:22},
+  {x:65,y:58},{x:115,y:58},{x:52,y:94},{x:128,y:94},{x:43,y:126},{x:137,y:126},
+  {x:70,y:146},{x:110,y:146},{x:67,y:196},{x:113,y:196},
+  {x:64,y:248},{x:116,y:248},
+];
+const B = [[0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,6],[5,7],[7,9],[6,8],[8,10],
+           [5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]];
+const svg = document.getElementById('skelSvg');
+
+const boneEls = B.map(([a,b]) => {
+  const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('stroke','rgba(37,99,235,0.25)'); l.setAttribute('stroke-width','1.5'); l.setAttribute('stroke-linecap','round');
+  svg.appendChild(l); return l;
+});
+const jointEls = J.map(j => {
+  const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx',j.x); c.setAttribute('cy',j.y); c.setAttribute('r','3.5');
+  c.setAttribute('fill','#e2e8f0'); c.setAttribute('stroke','#cbd5e1'); c.setAttribute('stroke-width','1.5');
+  svg.appendChild(c); return c;
+});
+
+let detected = 0, animT = 0;
+function updateSkel(count) {
+  detected = Math.min(count, 17); animT += 0.05;
+  J.forEach((jb,i) => {
+    const amp = i>=11?4:1.5;
+    const nx = jb.x + Math.sin(animT+i*0.5)*amp;
+    const ny = jb.y + Math.cos(animT*0.6+i*0.4)*(amp*0.5);
+    jointEls[i].setAttribute('cx',nx); jointEls[i].setAttribute('cy',ny);
+    if (i < detected) {
+      jointEls[i].setAttribute('fill', i < detected-1 ? '#2563eb' : '#60a5fa');
+      jointEls[i].setAttribute('stroke','rgba(37,99,235,0.3)');
+    } else {
+      jointEls[i].setAttribute('fill','#e2e8f0'); jointEls[i].setAttribute('stroke','#cbd5e1');
+    }
+  });
+  B.forEach(([a,b],idx) => {
+    boneEls[idx].setAttribute('x1',jointEls[a].getAttribute('cx')); boneEls[idx].setAttribute('y1',jointEls[a].getAttribute('cy'));
+    boneEls[idx].setAttribute('x2',jointEls[b].getAttribute('cx')); boneEls[idx].setAttribute('y2',jointEls[b].getAttribute('cy'));
+    boneEls[idx].setAttribute('stroke', a<detected&&b<detected?'rgba(37,99,235,0.5)':'rgba(37,99,235,0.1)');
+  });
+}
+
+/* ── Stages ── */
+const stages = [
+  { ico:'🎯', name:'Object Lock',        detail:'Target confirmed across frames',   logs:['Locating '+label+' in frame 0','Bounding box stabilized','Object ID confirmed'] },
+  { ico:'🦴', name:'Pose Reconstruction',detail:'17-joint skeleton estimation',      logs:['COCO-17 skeleton initialized','Keypoint detection 17/17','Confidence 96.3%'] },
+  { ico:'📈', name:'Motion Curve Build', detail:'Temporal joint trajectory curves',  logs:['Building joint trajectories','Kalman smoothing applied','Alignment complete'] },
+  { ico:'🔄', name:'3D Projection',      detail:'2D → 3D transformation',            logs:['Camera matrix estimated','Depth estimation done','3D coords projected'] },
+  { ico:'📦', name:'Export Ready',       detail:'Packaging animation data',          logs:['FBX structure ready','BVH frames encoded','Animation ready for download'] },
+];
+
+let cur = 0, pct = 0, innerPct = 0;
+let logLines = [];
+
+function addLog(text, cls='') {
+  logLines = [`<div class="log-line ${cls}">> ${text}</div>`, ...logLines].slice(0,5);
+  document.getElementById('logContent').innerHTML = logLines.join('');
+}
+
+function renderStages(active) {
+  document.getElementById('stagesList').innerHTML = stages.map((s,i) => {
+    const cls = i<active?'done':i===active?'active':'';
+    const status = i<active?'Done':i===active?'Running':'Queued';
+    return `<div class="stage ${cls}">
+      <div class="stage-ico">${i<active?'✓':s.ico}</div>
+      <div class="stage-body">
+        <div class="stage-name">${s.name}</div>
+        <div class="stage-detail">${i<active?'Completed':s.detail}</div>
+      </div>
+      <div class="stage-status">${status}</div>
+    </div>`;
+  }).join('');
+  if (active < stages.length) {
+    document.getElementById('procVStage').textContent = stages[active].name;
+  }
+}
+
+let timer;
+function tick() {
+  if (cur >= stages.length) {
+    pct = 100;
+    document.getElementById('opct').textContent = '100%';
+    document.getElementById('ofill').style.width = '100%';
+    document.getElementById('fbFill').style.width = '100%';
+    document.getElementById('fbCur').textContent = '270';
+    document.getElementById('nextBtn').disabled = false;
+    document.getElementById('procBadge').textContent = 'Complete';
+    document.getElementById('procBadge').className = 'badge badge-green';
+    addLog('Export complete. Animation ready.', 'green');
+    return;
+  }
+  innerPct += 3 + Math.random()*4;
+  if (innerPct >= 100) {
+    stages[cur].logs.forEach((l,i) => setTimeout(() => addLog(l, i===stages[cur].logs.length-1?'green':'blue'), i*80));
+    cur++; innerPct = 0;
+  }
+  pct = Math.min(cur/stages.length*100 + innerPct/stages.length, 99);
+  const frame = Math.min(Math.round(pct/100*270), 270);
+  document.getElementById('opct').textContent = Math.round(pct) + '%';
+  document.getElementById('ofill').style.width = pct + '%';
+  document.getElementById('fbFill').style.width = pct + '%';
+  document.getElementById('fbCur').textContent = frame;
+  updateSkel(Math.min(Math.floor(pct/100*17)+1, 17));
+  renderStages(cur);
+  timer = setTimeout(tick, 180);
+}
+
+setTimeout(() => { addLog('Initializing extraction pipeline...','blue'); renderStages(0); tick(); }, 300);
+
+document.getElementById('procRight').addEventListener('click', () => { clearTimeout(timer); window.location.href='result.html'; });
+document.getElementById('nextBtn').addEventListener('click', e => { e.stopPropagation(); window.location.href='result.html'; });
+</script>
+</body>
+</html>

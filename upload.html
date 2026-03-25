@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motio — Upload</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.upload-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+/* Drop zone */
+.upload-main {
+  display: flex; flex-direction: column;
+  padding: 24px; gap: 16px;
+  overflow: hidden;
+}
+
+.drop-zone {
+  flex: 1; min-height: 0;
+  border: 2px dashed var(--border-mid);
+  border-radius: 12px;
+  background: var(--bg-sub);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone:hover { border-color: var(--brand); background: var(--brand-light); }
+.drop-zone.drag-over { border-color: var(--brand); background: var(--brand-light); }
+.drop-zone.has-file { border-style: solid; border-color: var(--brand); cursor: default; }
+
+/* Empty state */
+.dz-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  pointer-events: none;
+}
+.drop-zone.has-file .dz-empty { display: none; }
+
+.dz-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #fff; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.dz-title { font-size: 16px; font-weight: 600; color: var(--text-1); }
+.dz-sub { font-size: 13px; color: var(--text-3); }
+.dz-formats { display: flex; gap: 6px; }
+
+/* Video state */
+.dz-video {
+  display: none; position: absolute; inset: 0;
+}
+.drop-zone.has-file .dz-video { display: block; }
+.dz-video video {
+  width: 100%; height: 100%; object-fit: contain;
+  background: #000;
+}
+.dz-video-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+  padding: 14px 16px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+}
+.dz-file-info {
+  display: flex; align-items: center; gap: 10px;
+}
+.dz-file-icon {
+  width: 32px; height: 32px; background: var(--brand);
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #fff;
+}
+.dz-file-name { font-size: 12px; font-weight: 500; color: #fff; }
+.dz-file-meta { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 1px; }
+
+.dz-change-btn {
+  position: absolute; top: 12px; right: 12px;
+}
+
+/* Bottom row */
+.upload-bottom {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.upload-status { font-size: 12px; color: var(--text-3); }
+.upload-status.ready { color: var(--success); }
+
+/* Sidebar */
+.upload-sidebar {
+  background: var(--bg-sub);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* Flow steps */
+.flow-list { display: flex; flex-direction: column; gap: 0; }
+.flow-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.flow-item:last-child { border-bottom: none; }
+.flow-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--border-mid);
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-4); flex-shrink: 0;
+}
+.flow-item.active .flow-num {
+  background: var(--brand); border-color: var(--brand);
+  color: #fff;
+}
+.flow-label { font-size: 12px; color: var(--text-3); }
+.flow-item.active .flow-label { color: var(--text-1); font-weight: 500; }
+
+#fileInput { display: none; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="upload.html">
+    <div class="nav-logo-mark">M</div>
+    Motio
+  </a>
+  <div class="nav-steps">
+    <div class="nav-step active"><span class="dot"></span>Upload</div>
+    <div class="nav-step"><span class="dot"></span>Clip Range</div>
+    <div class="nav-step"><span class="dot"></span>Detect</div>
+    <div class="nav-step"><span class="dot"></span>Extract</div>
+    <div class="nav-step"><span class="dot"></span>Result</div>
+  </div>
+  <div class="nav-right">
+    <span class="badge badge-gray">Step 1 of 6</span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-hdr anim">
+    <div>
+      <div class="page-title">Upload <em>Video</em></div>
+      <div class="page-desc">MP4 or MOV · up to 2 GB</div>
+    </div>
+  </div>
+
+  <div class="page-body anim-1">
+    <div class="upload-body">
+
+      <!-- Main drop area -->
+      <div class="upload-main">
+        <div class="drop-zone" id="dropZone">
+          <!-- Empty -->
+          <div class="dz-empty">
+            <div class="dz-icon">📁</div>
+            <div class="dz-title">Drop video here</div>
+            <div class="dz-sub">or click to browse</div>
+            <div class="dz-formats">
+              <span class="badge badge-gray">MP4</span>
+              <span class="badge badge-gray">MOV</span>
+              <span class="badge badge-gray">Max 2 GB</span>
+            </div>
+          </div>
+
+          <!-- Filled -->
+          <div class="dz-video">
+            <video id="videoPreview" muted loop autoplay playsinline></video>
+            <div class="dz-video-bar">
+              <div class="dz-file-info">
+                <div class="dz-file-icon">🎬</div>
+                <div>
+                  <div class="dz-file-name" id="fileName">—</div>
+                  <div class="dz-file-meta" id="fileMeta">—</div>
+                </div>
+              </div>
+              <span class="badge badge-green">Ready</span>
+            </div>
+            <div class="dz-change-btn">
+              <button class="btn btn-secondary btn-sm" id="changeBtn">Change file</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="upload-bottom">
+          <span class="upload-status" id="uploadStatus">Select a video file to continue</span>
+          <button class="btn btn-primary btn-lg" id="nextBtn" disabled>Continue →</button>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="upload-sidebar">
+        <div class="side-hdr">Workflow</div>
+        <div class="side-body">
+          <div class="flow-list">
+            <div class="flow-item active">
+              <div class="flow-num">1</div>
+              <div class="flow-label">Upload Video</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-num">2</div>
+              <div class="flow-label">Set Clip Range</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-num">3</div>
+              <div class="flow-label">Person Detection</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-num">4</div>
+              <div class="flow-label">Select Target</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-num">5</div>
+              <div class="flow-label">Motion Extraction</div>
+            </div>
+            <div class="flow-item">
+              <div class="flow-num">6</div>
+              <div class="flow-label">Download Result</div>
+            </div>
+          </div>
+
+          <div class="sep"></div>
+
+          <div>
+            <div class="sec-lbl" style="margin-bottom:8px;">Requirements</div>
+            <div class="info-row"><span class="info-key">Format</span><span class="info-val">MP4, MOV</span></div>
+            <div class="info-row"><span class="info-key">Max size</span><span class="info-val">2 GB</span></div>
+            <div class="info-row"><span class="info-key">Min resolution</span><span class="info-val">720p</span></div>
+            <div class="info-row"><span class="info-key">Recommended</span><span class="info-val">1080p 30fps</span></div>
+          </div>
+
+          <div style="padding:12px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);">
+            <div style="font-size:12px;color:var(--text-2);line-height:1.7;">
+              Best results with a single-angle, well-lit shot where the subject is fully visible.<br><br>
+              Works well with sports, dance, and athletic motion.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".mp4,.mov,video/mp4,video/quicktime">
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const vPreview  = document.getElementById('videoPreview');
+const nextBtn   = document.getElementById('nextBtn');
+const status    = document.getElementById('uploadStatus');
+
+function openPicker() { fileInput.click(); }
+
+dropZone.addEventListener('click', e => {
+  if (e.target.closest('#changeBtn')) return;
+  if (!dropZone.classList.contains('has-file')) openPicker();
+});
+document.getElementById('changeBtn').addEventListener('click', openPicker);
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function fmtBytes(b) {
+  return b < 1048576 ? (b/1024).toFixed(0)+' KB' : (b/1048576).toFixed(1)+' MB';
+}
+
+function handleFile(file) {
+  if (!file.type.startsWith('video/')) { alert('Please select an MP4 or MOV file.'); return; }
+  const url = URL.createObjectURL(file);
+  localStorage.setItem('motio_videoURL',  url);
+  localStorage.setItem('motio_fileName',  file.name);
+  localStorage.setItem('motio_fileSize',  fmtBytes(file.size));
+  localStorage.setItem('motio_fileType',  file.type.split('/')[1].toUpperCase());
+
+  vPreview.src = url;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileMeta').textContent = fmtBytes(file.size) + ' · ' + file.type.split('/')[1].toUpperCase();
+  dropZone.classList.add('has-file');
+  nextBtn.disabled = false;
+  status.textContent = file.name + ' — ready';
+  status.classList.add('ready');
+}
+
+// Restore
+const stored = localStorage.getItem('motio_videoURL');
+if (stored) {
+  vPreview.src = stored;
+  document.getElementById('fileName').textContent = localStorage.getItem('motio_fileName') || 'video';
+  document.getElementById('fileMeta').textContent =
+    (localStorage.getItem('motio_fileSize') || '') + ' · ' + (localStorage.getItem('motio_fileType') || '');
+  dropZone.classList.add('has-file');
+  nextBtn.disabled = false;
+  status.textContent = (localStorage.getItem('motio_fileName') || 'Video') + ' — ready';
+  status.classList.add('ready');
+}
+
+nextBtn.addEventListener('click', () => window.location.href = 'trim.html');
+</script>
+</body>
+</html>
