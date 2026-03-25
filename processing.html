@@ -3,140 +3,161 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Motio — Processing</title>
+<title>Motio — Result</title>
 <link rel="stylesheet" href="shared.css">
 <style>
-.proc-body {
+.result-body {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 260px 240px;
   width: 100%; height: 100%; overflow: hidden;
 }
 
-/* Left: video + skeleton */
-.proc-left {
-  display: flex; flex-direction: column; overflow: hidden; background: #fff;
+/* ── Left: preview ── */
+.result-left {
+  display: flex; flex-direction: column;
+  padding: 20px; gap: 14px;
+  overflow: hidden; background: #fff;
   border-right: 1px solid var(--border);
 }
 
-.proc-video-wrap {
-  flex: 1; min-height: 0; position: relative; background: #111; overflow: hidden;
+.success-bar {
+  flex-shrink: 0;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 8px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
 }
-.proc-video-wrap video {
-  width: 100%; height: 100%; object-fit: contain; display: block;
-  opacity: 0.45; filter: saturate(0.5);
+.success-ico {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #d1fae5; border: 1px solid #6ee7b7;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
 }
-.proc-video-wrap .no-video {
+.success-text h3 { font-size: 13px; font-weight: 600; color: var(--success); }
+.success-text p  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+/* Tabs */
+.preview-tabs {
+  flex-shrink: 0;
+  display: flex; gap: 0;
+  background: var(--bg-sub); border: 1px solid var(--border);
+  border-radius: 7px; padding: 3px; width: fit-content;
+}
+.ptab {
+  padding: 5px 14px; border-radius: 5px; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 500; background: transparent;
+  color: var(--text-3); transition: all 0.15s;
+}
+.ptab.active { background: var(--brand); color: #fff; }
+
+/* Preview area */
+.preview-area {
+  flex: 1; min-height: 0;
+  position: relative; background: #111;
+  border-radius: 10px; overflow: hidden; border: 1px solid var(--border);
+}
+.preview-area video {
+  width: 100%; height: 100%; object-fit: contain;
+  opacity: 0.5; filter: saturate(0.4);
+}
+.preview-area .no-video {
   width: 100%; height: 100%; background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; color: var(--text-4);
 }
 
-/* Skeleton SVG overlay */
-.skel-overlay {
+.skel-ov {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  pointer-events: none; z-index: 3;
+  pointer-events: none; z-index: 2;
 }
+.curves-view {
+  position: absolute; inset: 0;
+  background: var(--bg-sub); padding: 16px;
+  display: none; flex-direction: column; gap: 6px; overflow: hidden;
+}
+.curves-view.show { display: flex; }
 
-/* Video badges */
-.proc-v-top {
-  position: absolute; top: 10px; left: 10px; right: 10px;
-  display: flex; justify-content: space-between; z-index: 5; pointer-events: none;
-}
-.proc-v-bot {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 12px; z-index: 5; pointer-events: none;
-  background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
-}
+.pv-top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; z-index: 3; pointer-events: none; }
+.pv-bot { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 12px; background: linear-gradient(to top, rgba(0,0,0,0.5), transparent); z-index: 3; pointer-events: none; }
 
-/* Frame progress bar under video */
-.frame-bar {
-  flex-shrink: 0; border-top: 1px solid var(--border);
-  padding: 8px 14px; display: flex; align-items: center; gap: 10px;
-  background: var(--bg-sub);
-}
-.fb-label { font-size: 11px; color: var(--text-3); white-space: nowrap; }
-.fb-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.fb-fill { height: 100%; background: var(--brand); border-radius: 2px; width: 0%; transition: width 0.3s; }
-.fb-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); white-space: nowrap; }
-.fb-count em { font-style: normal; color: var(--brand); }
+/* Mini playback */
+.mini-play-row { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.mpb { width: 24px; height: 24px; border-radius: 50%; background: var(--brand); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; }
+.mpb:hover { background: var(--accent); }
+.mps { flex: 1; height: 3px; background: var(--bg-subtle); border-radius: 2px; overflow: hidden; }
+.mps-fill { height: 100%; background: var(--brand); animation: play-fill 3s linear infinite; }
+@keyframes play-fill { 0%{width:0%} 100%{width:100%} }
+.mpt { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); white-space: nowrap; }
 
-/* Right: stages */
-.proc-right {
+/* Curve rows */
+.curve-row { display: grid; grid-template-columns: 70px 1fr 36px; gap: 8px; align-items: center; }
+.c-lbl { font-size: 10px; color: var(--text-3); }
+.c-track { height: 22px; background: #fff; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+.c-track svg { width: 100%; height: 100%; }
+.c-avg { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-4); text-align: right; }
+
+/* ── Center: Summary ── */
+.result-center {
+  background: var(--bg-sub); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; overflow: hidden;
-  background: var(--bg-sub); cursor: pointer;
 }
-.proc-right-body {
-  flex: 1; min-height: 0; overflow-y: auto;
-  padding: 16px; display: flex; flex-direction: column; gap: 12px;
-}
+.result-center .side-body { gap: 12px; }
 
-/* Context strip */
-.ctx-box {
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat-box {
   background: #fff; border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 12px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  border-radius: 8px; padding: 12px; text-align: center;
 }
-.ctx-item .ctx-k { font-size: 10px; color: var(--text-4); margin-bottom: 1px; }
-.ctx-item .ctx-v { font-size: 12px; font-weight: 500; color: var(--text-1); }
-.ctx-item .ctx-v.blue { color: var(--brand); }
+.stat-num { font-size: 22px; font-weight: 700; color: var(--brand); line-height: 1; margin-bottom: 3px; }
+.stat-lbl { font-size: 10px; color: var(--text-4); text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* Overall progress */
-.overall { }
-.overall-hdr { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
-.overall-key { color: var(--text-3); }
-.overall-pct { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-1); }
-.overall-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.overall-fill { height: 100%; background: var(--brand); border-radius: 3px; transition: width 0.4s; }
+.quality-row { margin-bottom: 8px; }
+.quality-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 3px; }
+.quality-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.quality-fill { height: 100%; background: var(--brand); border-radius: 2px; }
 
-/* Stage cards */
-.stage {
-  background: #fff; border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 12px;
-  display: flex; gap: 10px; align-items: flex-start;
-  transition: border-color 0.2s;
+/* ── Right: Download ── */
+.result-right {
+  background: #fff; display: flex; flex-direction: column; overflow: hidden;
 }
-.stage.active { border-color: var(--brand); background: var(--brand-light); }
-.stage.done { border-color: var(--success); background: #f0fdf4; }
-.stage-ico {
-  width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0;
-  background: var(--bg-subtle); border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center; font-size: 13px;
-}
-.stage.active .stage-ico { background: #fff; border-color: var(--brand); }
-.stage.done .stage-ico { background: #d1fae5; border-color: var(--success); }
-.stage-body { flex: 1; min-width: 0; }
-.stage-name { font-size: 12px; font-weight: 500; color: var(--text-3); margin-bottom: 1px; }
-.stage.active .stage-name { color: var(--text-1); }
-.stage.done .stage-name { color: var(--text-2); }
-.stage-detail { font-size: 11px; color: var(--text-4); }
-.stage.active .stage-detail { color: var(--brand); }
-.stage.done .stage-detail { color: var(--success); }
-.stage-status { font-size: 10px; font-weight: 600; color: var(--text-4); align-self: center; white-space: nowrap; }
-.stage.active .stage-status { color: var(--warning); }
-.stage.done .stage-status { color: var(--success); }
+.result-right .side-body { gap: 14px; }
 
-/* Log */
-.log-box {
-  background: var(--bg-subtle); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 12px;
+.fmt-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fmt-opt {
+  background: var(--bg-sub); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 12px 10px; text-align: center;
+  cursor: pointer; transition: border-color 0.15s;
 }
-.log-hdr { font-size: 10px; color: var(--text-4); margin-bottom: 6px; }
-.log-line { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); line-height: 1.9; }
-.log-line.blue { color: var(--brand); }
-.log-line.green { color: var(--success); }
+.fmt-opt:hover { border-color: var(--brand); }
+.fmt-opt.sel { border-color: var(--brand); background: var(--brand-light); }
+.fmt-name { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--text-1); margin-bottom: 3px; }
+.fmt-opt.sel .fmt-name { color: var(--brand); }
+.fmt-desc { font-size: 10px; color: var(--text-4); line-height: 1.4; }
+.fmt-opt.sel .fmt-desc { color: var(--brand); }
 
-/* Actions */
-.proc-actions {
-  flex-shrink: 0; padding: 12px 16px; border-top: 1px solid var(--border);
-  background: #fff; display: flex; flex-direction: column; gap: 6px;
+.engine-row { display: flex; gap: 6px; }
+.engine-pill {
+  flex: 1; padding: 6px; border-radius: 6px; text-align: center;
+  font-size: 11px; font-weight: 500; border: 1px solid var(--border);
+  background: var(--bg-sub); color: var(--text-3);
 }
-.click-note { text-align: center; font-size: 11px; color: var(--text-4); }
-.click-note kbd {
-  background: var(--bg-subtle); border: 1px solid var(--border);
-  border-radius: 3px; padding: 1px 5px;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2);
+.engine-pill.active { background: var(--brand-light); border-color: var(--brand); color: var(--brand); }
+
+.dl-btn {
+  width: 100%; padding: 11px;
+  background: var(--brand); color: #fff; border: none;
+  border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
 }
+.dl-btn:hover { background: var(--accent); }
+
+.dl-btn-ghost {
+  width: 100%; padding: 8px;
+  background: transparent; color: var(--text-3);
+  border: 1px solid var(--border); border-radius: 7px;
+  font-size: 12px; cursor: pointer; transition: all 0.15s;
+}
+.dl-btn-ghost:hover { background: var(--bg-sub); color: var(--text-1); }
 </style>
 </head>
 <body>
@@ -146,230 +167,288 @@
     <div class="nav-step done"><span class="dot"></span>Upload</div>
     <div class="nav-step done"><span class="dot"></span>Clip Range</div>
     <div class="nav-step done"><span class="dot"></span>Detect</div>
-    <div class="nav-step active"><span class="dot"></span>Extract</div>
-    <div class="nav-step"><span class="dot"></span>Result</div>
+    <div class="nav-step done"><span class="dot"></span>Extract</div>
+    <div class="nav-step active"><span class="dot"></span>Result</div>
   </div>
   <div class="nav-right">
-    <span class="badge badge-orange" id="procBadge">Processing</span>
-    <span class="badge badge-gray">Step 4 of 6</span>
+    <span class="badge badge-green">Complete</span>
+    <span class="badge badge-gray">Step 6 of 6</span>
   </div>
 </nav>
 
 <div class="page">
   <div class="page-hdr anim">
     <div>
-      <div class="page-title">Motion <em>Extraction</em></div>
-      <div class="page-desc">Reconstructing 3D pose data frame by frame</div>
+      <div class="page-title">Animation <em>Ready</em></div>
+      <div class="page-desc">Motion extraction complete — select format and download</div>
     </div>
     <div class="page-hdr-right">
-      <span class="badge badge-blue" id="hTarget">—</span>
-      <span class="badge badge-gray" id="hRange">—</span>
+      <button class="btn btn-ghost btn-sm" onclick="window.location.href='upload.html'">+ New project</button>
     </div>
   </div>
 
   <div class="page-body anim-1">
-    <div class="proc-body">
+    <div class="result-body">
 
-      <!-- Left -->
-      <div class="proc-left">
-        <div class="proc-video-wrap" id="procVWrap">
-          <div class="no-video" id="procNoVid">No video</div>
-          <video id="procVideo" muted loop playsinline style="display:none;"></video>
-
-          <div class="skel-overlay">
-            <svg id="skelSvg" width="180" height="300" viewBox="0 0 180 300" style="opacity:0.9;"></svg>
-          </div>
-
-          <div class="proc-v-top">
-            <span class="badge badge-gray" id="procVFile">—</span>
-            <span class="badge badge-orange" id="procVStage">Object Lock</span>
-          </div>
-          <div class="proc-v-bot">
-            <span class="badge badge-blue" id="procVTarget">—</span>
+      <!-- Left: preview -->
+      <div class="result-left">
+        <div class="success-bar">
+          <div class="success-ico">✓</div>
+          <div class="success-text">
+            <h3>Extraction Complete</h3>
+            <p id="successDesc">270 frames · 17 joints reconstructed · 3D animation ready</p>
           </div>
         </div>
 
-        <div class="frame-bar">
-          <span class="fb-label">Frame</span>
-          <div class="fb-track"><div class="fb-fill" id="fbFill"></div></div>
-          <span class="fb-count"><em id="fbCur">0</em> / 270</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+          <div class="preview-tabs">
+            <button class="ptab active" onclick="switchTab('3d',this)">3D Preview</button>
+            <button class="ptab" onclick="switchTab('curves',this)">Motion Curves</button>
+          </div>
+          <span class="badge badge-green">▶ Playing</span>
         </div>
-      </div>
 
-      <!-- Right -->
-      <div class="proc-right" id="procRight">
-        <div class="side-hdr">Extraction Pipeline</div>
-        <div class="proc-right-body">
+        <div class="preview-area">
+          <div class="no-video" id="resPH">No video</div>
+          <video id="resVideo" muted loop playsinline style="display:none;"></video>
 
-          <div class="ctx-box">
-            <div class="ctx-item"><div class="ctx-k">Source</div><div class="ctx-v" id="ctxFile">—</div></div>
-            <div class="ctx-item"><div class="ctx-k">Target</div><div class="ctx-v blue" id="ctxTarget">—</div></div>
-            <div class="ctx-item"><div class="ctx-k">Range</div><div class="ctx-v blue" id="ctxRange">—</div></div>
-            <div class="ctx-item"><div class="ctx-k">Skeleton</div><div class="ctx-v">COCO-17</div></div>
+          <div class="skel-ov" id="skelOv">
+            <svg id="resSvg" width="160" height="270" viewBox="0 0 160 270" style="opacity:0.95;"></svg>
           </div>
 
-          <div class="overall">
-            <div class="overall-hdr">
-              <span class="overall-key">Overall Progress</span>
-              <span class="overall-pct" id="opct">0%</span>
+          <div class="curves-view" id="curvesView"></div>
+
+          <div class="pv-top">
+            <span class="badge badge-blue" id="pvTarget">—</span>
+            <span class="badge badge-green">✓ Extracted</span>
+          </div>
+          <div class="pv-bot">
+            <div style="display:flex;gap:6px;">
+              <span class="badge badge-gray" id="pvFile">—</span>
+              <span class="badge badge-gray" id="pvRange">—</span>
             </div>
-            <div class="overall-bar"><div class="overall-fill" id="ofill" style="width:0%"></div></div>
-          </div>
-
-          <div id="stagesList"></div>
-
-          <div class="log-box">
-            <div class="log-hdr">Processing log</div>
-            <div id="logContent"></div>
           </div>
         </div>
 
-        <div class="proc-actions">
-          <div class="click-note"><kbd>Click anywhere</kbd> to proceed when ready</div>
-          <button class="btn btn-primary" id="nextBtn" disabled>View Results →</button>
+        <div class="mini-play-row">
+          <button class="mpb" id="resPlayBtn">▶</button>
+          <div class="mps"><div class="mps-fill"></div></div>
+          <span class="mpt" id="resFileSmall">—</span>
         </div>
       </div>
+
+      <!-- Center: summary -->
+      <div class="result-center">
+        <div class="side-hdr">Output Summary</div>
+        <div class="side-body">
+          <div class="stats-row">
+            <div class="stat-box"><div class="stat-num">270</div><div class="stat-lbl">Frames</div></div>
+            <div class="stat-box"><div class="stat-num">17</div><div class="stat-lbl">Joints</div></div>
+            <div class="stat-box"><div class="stat-num" id="statDur" style="font-size:18px;">—</div><div class="stat-lbl">Duration</div></div>
+            <div class="stat-box"><div class="stat-num">30</div><div class="stat-lbl">FPS</div></div>
+          </div>
+
+          <div class="sep"></div>
+
+          <div>
+            <div class="sec-lbl" style="margin-bottom:8px;">Source Info</div>
+            <div class="info-row"><span class="info-key">File</span><span class="info-val" id="sumFile">—</span></div>
+            <div class="info-row"><span class="info-key">Range</span><span class="info-val blue" id="sumRange">—</span></div>
+            <div class="info-row"><span class="info-key">Target</span><span class="info-val blue" id="sumTarget">—</span></div>
+            <div class="info-row"><span class="info-key">Skeleton</span><span class="info-val">COCO-17</span></div>
+            <div class="info-row"><span class="info-key">Smoothing</span><span class="info-val">Kalman Filter</span></div>
+          </div>
+
+          <div class="sep"></div>
+
+          <div>
+            <div class="sec-lbl" style="margin-bottom:8px;">Quality</div>
+            <div class="quality-row">
+              <div class="quality-head"><span>Pose Accuracy</span><span style="color:var(--success);">96.3%</span></div>
+              <div class="quality-bar"><div class="quality-fill" style="width:96.3%"></div></div>
+            </div>
+            <div class="quality-row">
+              <div class="quality-head"><span>Temporal Smoothness</span><span style="color:var(--success);">94.1%</span></div>
+              <div class="quality-bar"><div class="quality-fill" style="width:94.1%;background:var(--success);"></div></div>
+            </div>
+            <div class="quality-row">
+              <div class="quality-head"><span>Occlusion Recovery</span><span style="color:var(--warning);">87.5%</span></div>
+              <div class="quality-bar"><div class="quality-fill" style="width:87.5%;background:var(--warning);"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: download -->
+      <div class="result-right">
+        <div class="side-hdr">Download</div>
+        <div class="side-body">
+          <div>
+            <div class="sec-lbl" style="margin-bottom:8px;">Output Format</div>
+            <div class="fmt-opts">
+              <div class="fmt-opt sel" id="fo-fbx" onclick="selFmt('FBX')">
+                <div class="fmt-name">FBX</div>
+                <div class="fmt-desc">Unity · Unreal<br>Industry standard</div>
+              </div>
+              <div class="fmt-opt" id="fo-bvh" onclick="selFmt('BVH')">
+                <div class="fmt-name">BVH</div>
+                <div class="fmt-desc">Blender · MB<br>Biovision format</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sec-lbl" style="margin-bottom:8px;">Compatible With</div>
+            <div class="engine-row">
+              <div class="engine-pill active">Unity</div>
+              <div class="engine-pill active">Unreal</div>
+              <div class="engine-pill">Blender</div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <button class="dl-btn" id="dlMain">↓ Download FBX</button>
+            <button class="dl-btn-ghost" id="dlAlt">↓ Download BVH</button>
+          </div>
+
+          <div class="sep"></div>
+
+          <div style="padding:12px;background:var(--bg-sub);border:1px solid var(--border);border-radius:8px;">
+            <div style="font-size:12px;color:var(--text-2);line-height:1.7;">
+              Motio supports sports, dance, martial arts, and custom performance capture.
+            </div>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="window.location.href='upload.html'">+ New extraction</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
 <script>
-  
+const url   = 'sample.mp4';
 const fn    = 'sample.mp4';
 const start = localStorage.getItem('motio_startTime')     || '00:03';
 const end   = localStorage.getItem('motio_endTime')       || '00:12';
 const label = localStorage.getItem('motio_selectedLabel') || 'Person 01';
-const url   = 'sample.mp4';
 
-document.getElementById('hTarget').textContent   = label;
-document.getElementById('hRange').textContent    = start + ' → ' + end;
-document.getElementById('ctxFile').textContent   = fn;
-document.getElementById('ctxTarget').textContent = label;
-document.getElementById('ctxRange').textContent  = start + ' → ' + end;
-document.getElementById('procVFile').textContent  = fn;
-document.getElementById('procVTarget').textContent = label;
+function t2s(t) { const [m,s]=t.split(':').map(Number); return m*60+s; }
+const dur = t2s(end) - t2s(start);
 
+document.getElementById('successDesc').textContent = (dur*30) + ' frames · 17 joints reconstructed · 3D animation ready';
+document.getElementById('sumFile').textContent   = fn;
+document.getElementById('sumRange').textContent  = start + ' → ' + end;
+document.getElementById('sumTarget').textContent = label;
+document.getElementById('pvTarget').textContent  = label;
+document.getElementById('pvFile').textContent    = fn;
+document.getElementById('pvRange').textContent   = start + ' → ' + end;
+document.getElementById('resFileSmall').textContent = fn;
+document.getElementById('statDur').textContent   = dur + 's';
+
+const resVideo = document.getElementById('resVideo');
 if (url) {
-  const v = document.getElementById('procVideo');
-  v.src = url; v.style.display = 'block';
-  document.getElementById('procNoVid').style.display = 'none';
-  v.play().catch(()=>{});
+  resVideo.src = url; resVideo.style.display = 'block';
+  document.getElementById('resPH').style.display = 'none';
+  resVideo.play().catch(()=>{});
 }
+document.getElementById('resPlayBtn').addEventListener('click', () => {
+  if (!url) return;
+  resVideo.paused ? resVideo.play() : resVideo.pause();
+  document.getElementById('resPlayBtn').textContent = resVideo.paused ? '▶' : '⏸';
+});
 
 /* ── Skeleton ── */
-const J = [
-  {x:90,y:22},{x:82,y:17},{x:98,y:17},{x:74,y:22},{x:106,y:22},
-  {x:65,y:58},{x:115,y:58},{x:52,y:94},{x:128,y:94},{x:43,y:126},{x:137,y:126},
-  {x:70,y:146},{x:110,y:146},{x:67,y:196},{x:113,y:196},
-  {x:64,y:248},{x:116,y:248},
+const RJ = [
+  {x:80,y:20},{x:73,y:15},{x:87,y:15},{x:66,y:20},{x:94,y:20},
+  {x:58,y:54},{x:102,y:54},{x:46,y:86},{x:114,y:86},{x:38,y:114},{x:122,y:114},
+  {x:63,y:132},{x:97,y:132},{x:61,y:178},{x:99,y:178},
+  {x:59,y:224},{x:101,y:224},
 ];
-const B = [[0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,6],[5,7],[7,9],[6,8],[8,10],
-           [5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]];
-const svg = document.getElementById('skelSvg');
-
-const boneEls = B.map(([a,b]) => {
+const RB = [[0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,6],[5,7],[7,9],[6,8],[8,10],
+            [5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]];
+const rSvg = document.getElementById('resSvg');
+const rBones = RB.map(([a,b]) => {
   const l = document.createElementNS('http://www.w3.org/2000/svg','line');
-  l.setAttribute('stroke','rgba(37,99,235,0.25)'); l.setAttribute('stroke-width','1.5'); l.setAttribute('stroke-linecap','round');
-  svg.appendChild(l); return l;
+  l.setAttribute('stroke','rgba(37,99,235,0.5)'); l.setAttribute('stroke-width','1.5'); l.setAttribute('stroke-linecap','round');
+  rSvg.appendChild(l); return l;
 });
-const jointEls = J.map(j => {
+const rJoints = RJ.map(j => {
   const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
   c.setAttribute('cx',j.x); c.setAttribute('cy',j.y); c.setAttribute('r','3.5');
-  c.setAttribute('fill','#e2e8f0'); c.setAttribute('stroke','#cbd5e1'); c.setAttribute('stroke-width','1.5');
-  svg.appendChild(c); return c;
+  c.setAttribute('fill','#2563eb'); c.setAttribute('stroke','rgba(37,99,235,0.3)'); c.setAttribute('stroke-width','1.5');
+  rSvg.appendChild(c); return c;
 });
-
-let detected = 0, animT = 0;
-function updateSkel(count) {
-  detected = Math.min(count, 17); animT += 0.05;
-  J.forEach((jb,i) => {
+let rt = 0;
+function animSkel() {
+  rt += 0.04;
+  RJ.forEach((jb,i) => {
     const amp = i>=11?4:1.5;
-    const nx = jb.x + Math.sin(animT+i*0.5)*amp;
-    const ny = jb.y + Math.cos(animT*0.6+i*0.4)*(amp*0.5);
-    jointEls[i].setAttribute('cx',nx); jointEls[i].setAttribute('cy',ny);
-    if (i < detected) {
-      jointEls[i].setAttribute('fill', i < detected-1 ? '#2563eb' : '#60a5fa');
-      jointEls[i].setAttribute('stroke','rgba(37,99,235,0.3)');
-    } else {
-      jointEls[i].setAttribute('fill','#e2e8f0'); jointEls[i].setAttribute('stroke','#cbd5e1');
-    }
+    rJoints[i].setAttribute('cx', jb.x + Math.sin(rt+i*0.5)*amp);
+    rJoints[i].setAttribute('cy', jb.y + Math.cos(rt*0.6+i*0.4)*(amp*0.5));
   });
-  B.forEach(([a,b],idx) => {
-    boneEls[idx].setAttribute('x1',jointEls[a].getAttribute('cx')); boneEls[idx].setAttribute('y1',jointEls[a].getAttribute('cy'));
-    boneEls[idx].setAttribute('x2',jointEls[b].getAttribute('cx')); boneEls[idx].setAttribute('y2',jointEls[b].getAttribute('cy'));
-    boneEls[idx].setAttribute('stroke', a<detected&&b<detected?'rgba(37,99,235,0.5)':'rgba(37,99,235,0.1)');
+  RB.forEach(([a,b],idx) => {
+    rBones[idx].setAttribute('x1',rJoints[a].getAttribute('cx')); rBones[idx].setAttribute('y1',rJoints[a].getAttribute('cy'));
+    rBones[idx].setAttribute('x2',rJoints[b].getAttribute('cx')); rBones[idx].setAttribute('y2',rJoints[b].getAttribute('cy'));
   });
+  requestAnimationFrame(animSkel);
+}
+animSkel();
+
+/* ── Tabs ── */
+function switchTab(tab, btn) {
+  document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('skelOv').style.display   = tab==='3d' ? 'flex' : 'none';
+  const cv = document.getElementById('curvesView');
+  if (tab==='curves') { cv.classList.add('show'); renderCurves(); }
+  else cv.classList.remove('show');
 }
 
-/* ── Stages ── */
-const stages = [
-  { ico:'🎯', name:'Object Lock',        detail:'Target confirmed across frames',   logs:['Locating '+label+' in frame 0','Bounding box stabilized','Object ID confirmed'] },
-  { ico:'🦴', name:'Pose Reconstruction',detail:'17-joint skeleton estimation',      logs:['COCO-17 skeleton initialized','Keypoint detection 17/17','Confidence 96.3%'] },
-  { ico:'📈', name:'Motion Curve Build', detail:'Temporal joint trajectory curves',  logs:['Building joint trajectories','Kalman smoothing applied','Alignment complete'] },
-  { ico:'🔄', name:'3D Projection',      detail:'2D → 3D transformation',            logs:['Camera matrix estimated','Depth estimation done','3D coords projected'] },
-  { ico:'📦', name:'Export Ready',       detail:'Packaging animation data',          logs:['FBX structure ready','BVH frames encoded','Animation ready for download'] },
-];
-
-let cur = 0, pct = 0, innerPct = 0;
-let logLines = [];
-
-function addLog(text, cls='') {
-  logLines = [`<div class="log-line ${cls}">> ${text}</div>`, ...logLines].slice(0,5);
-  document.getElementById('logContent').innerHTML = logLines.join('');
+function renderCurves() {
+  const c = document.getElementById('curvesView');
+  const curves = [
+    {name:'Hip · Y',    color:'#2563eb', d: Array.from({length:60},(_,i)=>Math.sin(i*.25)*30+50)},
+    {name:'Spine',      color:'#0891b2', d: Array.from({length:60},(_,i)=>Math.sin(i*.2+1)*20+50)},
+    {name:'L. Shoulder',color:'#059669', d: Array.from({length:60},(_,i)=>Math.cos(i*.35)*35+50)},
+    {name:'R. Shoulder',color:'#d97706', d: Array.from({length:60},(_,i)=>Math.cos(i*.35+Math.PI)*35+50)},
+    {name:'L. Knee',    color:'#7c3aed', d: Array.from({length:60},(_,i)=>Math.abs(Math.sin(i*.5))*55+20)},
+    {name:'R. Knee',    color:'#be185d', d: Array.from({length:60},(_,i)=>Math.abs(Math.sin(i*.5+Math.PI))*55+20)},
+    {name:'L. Ankle',   color:'#b45309', d: Array.from({length:60},(_,i)=>Math.abs(Math.sin(i*.7))*60+15)},
+    {name:'R. Ankle',   color:'#1d4ed8', d: Array.from({length:60},(_,i)=>Math.abs(Math.sin(i*.7+Math.PI))*60+15)},
+  ];
+  c.innerHTML = `<div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:8px;">Joint Motion Curves</div>` +
+    curves.map(cd => {
+      const pts = cd.d.map((v,i)=>`${i*(100/60)},${100-v}`).join(' ');
+      const avg = (cd.d.reduce((a,b)=>a+b,0)/cd.d.length).toFixed(0);
+      return `<div class="curve-row">
+        <div class="c-lbl">${cd.name}</div>
+        <div class="c-track">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline points="${pts}" fill="none" stroke="${cd.color}" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+          </svg>
+        </div>
+        <div class="c-avg">${avg}</div>
+      </div>`;
+    }).join('');
 }
 
-function renderStages(active) {
-  document.getElementById('stagesList').innerHTML = stages.map((s,i) => {
-    const cls = i<active?'done':i===active?'active':'';
-    const status = i<active?'Done':i===active?'Running':'Queued';
-    return `<div class="stage ${cls}">
-      <div class="stage-ico">${i<active?'✓':s.ico}</div>
-      <div class="stage-body">
-        <div class="stage-name">${s.name}</div>
-        <div class="stage-detail">${i<active?'Completed':s.detail}</div>
-      </div>
-      <div class="stage-status">${status}</div>
-    </div>`;
-  }).join('');
-  if (active < stages.length) {
-    document.getElementById('procVStage').textContent = stages[active].name;
-  }
+/* ── Format ── */
+function selFmt(fmt) {
+  ['FBX','BVH'].forEach(f => document.getElementById('fo-'+f.toLowerCase()).classList.toggle('sel', f===fmt));
+  document.getElementById('dlMain').textContent = '↓ Download ' + fmt;
+  localStorage.setItem('motio_outputFormat', fmt);
 }
 
-let timer;
-function tick() {
-  if (cur >= stages.length) {
-    pct = 100;
-    document.getElementById('opct').textContent = '100%';
-    document.getElementById('ofill').style.width = '100%';
-    document.getElementById('fbFill').style.width = '100%';
-    document.getElementById('fbCur').textContent = '270';
-    document.getElementById('nextBtn').disabled = false;
-    document.getElementById('procBadge').textContent = 'Complete';
-    document.getElementById('procBadge').className = 'badge badge-green';
-    addLog('Export complete. Animation ready.', 'green');
-    return;
-  }
-  innerPct += 3 + Math.random()*4;
-  if (innerPct >= 100) {
-    stages[cur].logs.forEach((l,i) => setTimeout(() => addLog(l, i===stages[cur].logs.length-1?'green':'blue'), i*80));
-    cur++; innerPct = 0;
-  }
-  pct = Math.min(cur/stages.length*100 + innerPct/stages.length, 99);
-  const frame = Math.min(Math.round(pct/100*270), 270);
-  document.getElementById('opct').textContent = Math.round(pct) + '%';
-  document.getElementById('ofill').style.width = pct + '%';
-  document.getElementById('fbFill').style.width = pct + '%';
-  document.getElementById('fbCur').textContent = frame;
-  updateSkel(Math.min(Math.floor(pct/100*17)+1, 17));
-  renderStages(cur);
-  timer = setTimeout(tick, 180);
-}
-
-setTimeout(() => { addLog('Initializing extraction pipeline...','blue'); renderStages(0); tick(); }, 300);
-
-document.getElementById('procRight').addEventListener('click', () => { clearTimeout(timer); window.location.href='result.html'; });
-document.getElementById('nextBtn').addEventListener('click', e => { e.stopPropagation(); window.location.href='result.html'; });
+['dlMain','dlAlt'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function() {
+    const orig = this.textContent;
+    this.textContent = '✓ Downloaded!';
+    this.style.background = id==='dlMain' ? 'var(--success)' : '';
+    this.style.color = id==='dlAlt' ? 'var(--success)' : '';
+    setTimeout(() => { this.textContent = orig; this.style.background=''; this.style.color=''; }, 2000);
+  });
+});
 </script>
 </body>
 </html>
