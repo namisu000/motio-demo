@@ -1,523 +1,718 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Motio — Detect & Select</title>
-<link rel="stylesheet" href="shared.css">
-<style>
-.select-body {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  width: 100%; height: 100%; overflow: hidden;
-}
-
-/* ── Left: video frame ── */
-.select-left {
-  display: flex; flex-direction: column;
-  padding: 20px; gap: 14px;
-  overflow: hidden; background: #fff;
-}
-
-.detection-frame {
-  flex: 1; min-height: 0;
-  position: relative;
-  background: #000; border-radius: 10px; overflow: hidden;
-  border: 1px solid var(--border);
-}
-.detection-frame video {
-  width: 100%; height: 100%; object-fit: contain; display: block;
-}
-.detection-frame .no-video {
-  width: 100%; height: 100%; background: var(--bg-subtle);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: var(--text-4);
-}
-
-/* Scan line */
-.scan-line {
-  position: absolute; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.6), transparent);
-  pointer-events: none; z-index: 4;
-  animation: scan-anim 2.8s linear infinite;
-}
-@keyframes scan-anim { 0%{top:0%} 100%{top:100%} }
-
-/* Bounding boxes */
-.bbox {
-  position: absolute; border: 2px solid;
-  border-radius: 4px; z-index: 5;
-  cursor: pointer; 
-  /*ansition: all 0.18s;*/
-}
-.bbox.person:hover { box-shadow: 0 0 0 2px currentColor; }
-.bbox.selected { box-shadow: 0 0 0 2px currentColor, 0 0 16px rgba(37,99,235,0.25) !important; }
-.bbox.non-person { opacity: 0.35; cursor: default; }
-.bbox.non-person:hover { box-shadow: none !important; }
-.bbox.dimmed { opacity: 0.25; }
-
-/* Bbox label */
-.bbox-label {
-  position: absolute; top: -22px; left: -2px;
-  padding: 1px 7px; border-radius: 3px 3px 0 0;
-  font-size: 10px; font-weight: 600;
-  background: currentColor; white-space: nowrap;
-  display: flex; gap: 5px;
-}
-.bbox-label-text { color: #fff; mix-blend-mode: difference; }
-.bbox-label-conf { color: rgba(255,255,255,0.65); font-size: 9px; }
-
-.bbox-check {
-  position: absolute; top: 5px; right: 5px;
-  width: 16px; height: 16px; border-radius: 50%;
-  background: currentColor;
-  display: none; align-items: center; justify-content: center;
-  font-size: 9px; color: #fff;
-}
-.bbox.selected .bbox-check { display: flex; }
-
-/* Overlay bars */
-.v-top-bar {
-  position: absolute; top: 0; left: 0; right: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
-  padding: 10px 12px;
-  display: flex; justify-content: space-between; align-items: flex-start;
-  z-index: 7; pointer-events: none;
-}
-.v-bottom-bar {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
-  padding: 10px 12px;
-  display: flex; justify-content: space-between; align-items: flex-end;
-  z-index: 7; pointer-events: none;
-}
-
-/* Playback mini bar */
-.mini-pb {
-  flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px;
-}
-.mini-play {
-  width: 26px; height: 26px; border-radius: 50%;
-  background: var(--brand); border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; color: #fff;
-}
-.mini-play:hover { background: var(--accent); }
-.mini-scrub {
-  flex: 1; height: 3px; background: var(--bg-subtle);
-  border-radius: 2px; overflow: hidden; cursor: pointer;
-}
-.mini-scrub-fill { height: 100%; background: var(--brand); width: 0%; transition: width 0.1s; }
-.mini-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); white-space: nowrap; }
-
-/* ── Right: Object list ── */
-.select-right {
-  background: var(--bg-sub);
-  border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-.select-right .side-body { gap: 8px; }
-
-/* Object card */
-.obj-card {
-  background: #fff; border: 1.5px solid var(--border);
-  border-radius: 8px; padding: 10px 12px;
-  cursor: pointer; transition: border-color 0.15s;
-  display: flex; align-items: center; gap: 10px;
-}
-.obj-card:hover:not(.non-person) { border-color: var(--brand); }
-.obj-card.selected { border-color: var(--brand); background: var(--brand-light); }
-.obj-card.non-person { opacity: 0.5; cursor: not-allowed; }
-.obj-card.non-person:hover { border-color: var(--border); }
-
-.obj-card-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.obj-card-name { flex: 1; font-size: 12px; font-weight: 500; color: var(--text-1); }
-.obj-card-check {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--brand); color: #fff;
-  display: none; align-items: center; justify-content: center;
-  font-size: 9px; flex-shrink: 0;
-}
-.obj-card.selected .obj-card-check { display: flex; }
-
-/* Summary */
-.sel-summary {
-  border-top: 1px solid var(--border);
-  padding: 14px 16px;
-  flex-shrink: 0; background: #fff;
-}
-.sel-summary-empty { font-size: 12px; color: var(--text-4); text-align: center; padding: 8px 0; }
-.sel-summary-info { display: none; }
-.sel-summary-info.show { display: block; }
-.sel-name { font-size: 15px; font-weight: 600; color: var(--brand); margin-bottom: 8px; }
-.sel-conf { font-size: 11px; color: var(--text-3); margin-bottom: 6px; }
-
-.click-marker{
-  position:absolute;
-  width:12px; height:12px;
-  border:2px solid #fff;
-  background:#2563eb;
-  border-radius:50%;
-  transform:translate(-50%, -50%);
-  z-index:9;
-  pointer-events:none;
-  box-shadow:0 0 0 3px rgba(37,99,235,0.25);
-}
-
-.track-readout{
-  position:absolute;
-  left:12px; bottom:44px;
-  z-index:8;
-  font-size:11px;
-  color:#fff;
-  background:rgba(0,0,0,0.45);
-  padding:6px 8px;
-  border-radius:6px;
-  pointer-events:none;
-  backdrop-filter: blur(4px);
-}
-
-.kf-item{
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:8px 10px;
-  background:#fff;
-  font-size:12px;
-}
-
-.kf-item-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:4px;
-}
-
-.kf-item-time{
-  font-weight:600;
-  color:var(--brand);
-}
-
-.kf-item-meta{
-  color:var(--text-3);
-  font-size:11px;
-}
-
-.kf-del{
-  border:none;
-  background:#eef2ff;
-  color:#2563eb;
-  border-radius:6px;
-  padding:4px 7px;
-  cursor:pointer;
-  font-size:11px;
-}
-
-.bbox.manual-track{
-  transition:none !important;
-}
-</style>
-</head>
-<body>
-
-<nav class="nav">
-  <a class="nav-logo" href="upload.html"><div class="nav-logo-mark">M</div>Motio</a>
-  <div class="nav-steps">
-    <div class="nav-step done"><span class="dot"></span>Upload</div>
-    <div class="nav-step done"><span class="dot"></span>Clip Range</div>
-    <div class="nav-step active"><span class="dot"></span>Detect</div>
-    <div class="nav-step"><span class="dot"></span>Extract</div>
-    <div class="nav-step"><span class="dot"></span>Result</div>
-  </div>
-  <div class="nav-right">
-    <span class="badge badge-blue" id="rangeTag">—</span>
-    <span class="badge badge-gray">Step 3 of 6</span>
-  </div>
-</nav>
-
-<div class="page">
-  <div class="page-hdr anim">
-    <div>
-      <div class="page-title"><em>Detect</em> & Select Target</div>
-      <div class="page-desc">Click a person on the video or in the list — only human subjects can be selected</div>
-    </div>
-    <div class="page-hdr-right">
-      <span class="badge badge-blue">4 objects detected</span>
-      <span class="badge badge-blue">2 persons</span>
-    </div>
-  </div>
-
-  <div class="page-body anim-1">
-    <div class="select-body">
-
-      <!-- Left: detection frame -->
-      <div class="select-left">
-        <div class="detection-frame" id="detFrame">
-          <div class="click-marker" id="clickMarker" style="display:none;"></div>
-          <div class="track-readout" id="trackReadout">Click on video to add keyframe</div>
-          <div class="no-video" id="noVid">No video loaded</div>
-          <video id="detVideo" muted loop playsinline style="display:none;"></video>
-
-          <div class="scan-line"></div>
-
-          <!-- Bboxes -->
-          <div class="bbox person" id="bb-P01" data-id="P01"
-            style="color:#2563eb;border-color:#2563eb;top:21.5%;left:29.3%;width:23%;height:72%;">
-    <!-- { time: 0.00, x: 29.3, y: 21.5, w: 23.0, h: 72.0 }, -->
-
-            <div class="bbox-label">
-              <span class="bbox-label-text">Person 01</span>
-              <span class="bbox-label-conf">98.2%</span>
-            </div>
-            <div class="bbox-check">✓</div>
-          </div>
-
-          <div class="bbox person" id="bb-P02" data-id="P02"
-            style="color:#0891b2;border-color:#0891b2;top:24%;left: 59%;width:5%;height:15%;">
-            <div class="bbox-label">
-              <span class="bbox-label-text">Person 02</span>
-              <span class="bbox-label-conf">94.7%</span>
-            </div>
-            <div class="bbox-check">✓</div>
-          </div>
-
-
-          <div class="v-top-bar">
-            <div style="display:flex;gap:5px;">
-              <span class="badge badge-gray" id="vFile">sample.mp4</span>
-              <span class="badge badge-gray" id="vRange">—</span>
-            </div>
-            <span class="badge badge-blue">4 detected</span>
-          </div>
-          <div class="v-bottom-bar">
-            <span class="badge badge-gray" id="vSelBadge" style="display:none;"></span>
-            <span style="font-size:11px;color:rgba(255,255,255,0.5);" id="vHint">Click a person to select</span>
-          </div>
-        </div>
-
-        <!-- Mini playback -->
-        <div class="mini-pb">
-          <button class="mini-play" id="miniPlayBtn">▶</button>
-          <div class="mini-scrub" id="miniScrub">
-            <div class="mini-scrub-fill" id="miniScrubFill"></div>
-          </div>
-          <div class="mini-time"><span id="miniCur">00:00</span> / <span id="miniTotal">00:00</span></div>
-          <span class="badge badge-gray" id="miniFile">—</span>
-        </div>
-      </div>
-
-      <!-- Right: list + summary -->
-      <div class="select-right">
-        <div class="side-hdr">
-          <span>Detected Objects</span>
-          <span class="badge badge-gray">4</span>
-        </div>
-        <div class="side-body" id="objCards"></div>
-
-        <div class="sel-summary">
-          <div class="sel-summary-empty" id="sumEmpty">Select a person to continue</div>
-          <div class="sel-summary-info" id="sumInfo">
-            <div class="sel-name" id="sumName">—</div>
-            <div class="sel-conf" id="sumConf">—</div>
-            <div class="info-row"><span class="info-key">Type</span><span class="info-val blue">Human Subject</span></div>
-            <div class="info-row"><span class="info-key">Keypoints</span><span class="info-val">17 (COCO-17)</span></div>
-            <div class="info-row"><span class="info-key">Visibility</span><span class="info-val green">Full body</span></div>
-            <div class="info-row"><span class="info-key">Tracking</span><span class="info-val green">Stable</span></div>
-          </div>
-        </div>
-
-        <div class="side-actions">
-          <button class="btn btn-secondary btn-sm" onclick="window.location.href='trim.html'">← Back</button>
-          <button class="btn btn-primary" id="nextBtn" disabled>Start Extraction →</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-const PERSONS = [
-  { id:'P01', label:'Person 01', color:'#2563eb', conf:'98.2%', type:'human' },
-  { id:'P02', label:'Person 02', color:'#0891b2', conf:'94.7%', type:'human' },
-];
-
-const storedURL = "video_00_00.mp4"; // 실제로는 localStorage.getItem('motio_videoURL') 등에서 불러와야 함
-const storedFile = "sample.mp4";
-const storedStart = localStorage.getItem('motio_startTime') || '00:03';
-const storedEnd   = localStorage.getItem('motio_endTime')   || '00:12';
-
-document.getElementById('rangeTag').textContent = storedStart + ' — ' + storedEnd;
-document.getElementById('vRange').textContent   = storedStart + ' — ' + storedEnd;
-document.getElementById('vFile').textContent    = storedFile;
-document.getElementById('miniFile').textContent = storedFile;
-
-const detVideo = document.getElementById('detVideo');
-if (storedURL) {
-  detVideo.src = storedURL; detVideo.style.display = 'block';
-  document.getElementById('noVid').style.display = 'none';
-  detVideo.addEventListener('loadedmetadata', () => {
-    document.getElementById('miniTotal').textContent = s2t(detVideo.duration);
-
-    /* 영상 로드되면 P01 자동 선택 */
-    selectPerson('P01');
-    updateTrackingPreview(0);
-
-    detVideo.addEventListener('seeked', () => {
-      updateTrackingPreview(detVideo.currentTime);
-    });
-  });
-
-  detVideo.addEventListener('timeupdate', () => {
-    const p = detVideo.currentTime / (detVideo.duration || 1) * 100;
-    document.getElementById('miniScrubFill').style.width = p + '%';
-    document.getElementById('miniCur').textContent = s2t(detVideo.currentTime);
-    
-  });
-}
-
-const miniPlayBtn = document.getElementById('miniPlayBtn');
-miniPlayBtn.addEventListener('click', () => {
-  if (!storedURL) return;
-
-  detVideo.paused ? detVideo.play() : detVideo.pause();
-  miniPlayBtn.textContent = detVideo.paused ? '▶' : '⏸';
-});
-
-document.getElementById('miniScrub').addEventListener('click', e => {
-  if (!storedURL || !detVideo.duration) return;
-
-  const r = document.getElementById('miniScrub').getBoundingClientRect();
-  detVideo.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * detVideo.duration;
-});
-
-
-let selectedId = null;
-
-const rawTrackingData = {
-  P01: [
-    { time: 0.00, x: 29.3, y: 21.5, w: 23.0, h: 72.0 },
-    { time: 1.78, x: 30.8, y: 20.6, w: 23.0, h: 72.0 },
-    { time: 2.19, x: 33.8, y: 17.5, w: 23.0, h: 72.0 },
-    { time: 3.66, x: 35.9, y: 15.7, w: 23.0, h: 72.0 },
-    { time: 4.50, x: 28.7, y: 19.0, w: 23.0, h: 72.0 },
-    { time: 4.50, x: 29.8, y: 17.5, w: 23.0, h: 72.0 },
-    { time: 5.59, x: 33.1, y: 14.0, w: 23.0, h: 72.0 },
-    { time: 6.25, x: 37.9, y: 14.6, w: 23.0, h: 72.0 },
-    { time: 6.25, x: 38.4, y: 14.6, w: 23.0, h: 72.0 },
-    { time: 6.93, x: 43.1, y: 12.6, w: 23.0, h: 72.0 },
-  ],
-  P02: [
-    {time: 0.00, x: 51.6, y: 0.0, w: 10.0, h: 15.0}
-  ]
-};
-
-
-function normalizeKeyframes(arr) {
-  const sorted = [...arr].sort((a, b) => a.time - b.time);
-  const out = [];
-
-  for (let i = 0; i < sorted.length; i++) {
-    const cur = { ...sorted[i] };
-
-    if (out.length > 0 && cur.time <= out[out.length - 1].time) {
-      cur.time = out[out.length - 1].time + 0.001;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motio — Detect & Select</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .select-body {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
 
-    out.push(cur);
-  }
+    /* ── Left: video frame ── */
+    .select-left {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
 
-  return out;
-}
+    .detection-frame {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .detection-frame video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .detection-frame .no-video {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--text-4);
+    }
+
+    /* Scan line */
+    .scan-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.6), transparent);
+      pointer-events: none;
+      z-index: 4;
+      animation: scan-anim 2.8s linear infinite;
+    }
+
+    @keyframes scan-anim {
+      0% {
+        top: 0%
+      }
+
+      100% {
+        top: 100%
+      }
+    }
+
+    /* Bounding boxes */
+    .bbox {
+      position: absolute;
+      border: 2px solid;
+      border-radius: 4px;
+      z-index: 5;
+      cursor: pointer;
+      /*ansition: all 0.18s;*/
+    }
+
+    .bbox.person:hover {
+      box-shadow: 0 0 0 2px currentColor;
+    }
+
+    .bbox.selected {
+      box-shadow: 0 0 0 2px currentColor, 0 0 16px rgba(37, 99, 235, 0.25) !important;
+    }
+
+    .bbox.non-person {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .bbox.non-person:hover {
+      box-shadow: none !important;
+    }
+
+    .bbox.dimmed {
+      opacity: 0.25;
+    }
+
+    /* Bbox label */
+    .bbox-label {
+      position: absolute;
+      top: -22px;
+      left: -2px;
+      padding: 1px 7px;
+      border-radius: 3px 3px 0 0;
+      font-size: 10px;
+      font-weight: 600;
+      background: currentColor;
+      white-space: nowrap;
+      display: flex;
+      gap: 5px;
+    }
+
+    .bbox-label-text {
+      color: #fff;
+      mix-blend-mode: difference;
+    }
+
+    .bbox-label-conf {
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 9px;
+    }
+
+    .bbox-check {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: currentColor;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #fff;
+    }
+
+    .bbox.selected .bbox-check {
+      display: flex;
+    }
+
+    /* Overlay bars */
+    .v-top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 7;
+      pointer-events: none;
+    }
+
+    .v-bottom-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 7;
+      pointer-events: none;
+    }
+
+    /* Playback mini bar */
+    .mini-pb {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-play {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--brand);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #fff;
+    }
+
+    .mini-play:hover {
+      background: var(--accent);
+    }
+
+    .mini-scrub {
+      flex: 1;
+      height: 3px;
+      background: var(--bg-subtle);
+      border-radius: 2px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .mini-scrub-fill {
+      height: 100%;
+      background: var(--brand);
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+    .mini-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+
+    /* ── Right: Object list ── */
+    .select-right {
+      background: var(--bg-sub);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .select-right .side-body {
+      gap: 8px;
+    }
+
+    /* Object card */
+    .obj-card {
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .obj-card:hover:not(.non-person) {
+      border-color: var(--brand);
+    }
+
+    .obj-card.selected {
+      border-color: var(--brand);
+      background: var(--brand-light);
+    }
+
+    .obj-card.non-person {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .obj-card.non-person:hover {
+      border-color: var(--border);
+    }
+
+    .obj-card-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .obj-card-name {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .obj-card-check {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      flex-shrink: 0;
+    }
+
+    .obj-card.selected .obj-card-check {
+      display: flex;
+    }
+
+    /* Summary */
+    .sel-summary {
+      border-top: 1px solid var(--border);
+      padding: 14px 16px;
+      flex-shrink: 0;
+      background: #fff;
+    }
+
+    .sel-summary-empty {
+      font-size: 12px;
+      color: var(--text-4);
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .sel-summary-info {
+      display: none;
+    }
+
+    .sel-summary-info.show {
+      display: block;
+    }
+
+    .sel-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--brand);
+      margin-bottom: 8px;
+    }
+
+    .sel-conf {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+
+    .click-marker {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #fff;
+      background: #2563eb;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9;
+      pointer-events: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    .track-readout {
+      position: absolute;
+      left: 12px;
+      bottom: 44px;
+      z-index: 8;
+      font-size: 11px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 6px 8px;
+      border-radius: 6px;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+
+    .kf-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      font-size: 12px;
+    }
+
+    .kf-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .kf-item-time {
+      font-weight: 600;
+      color: var(--brand);
+    }
+
+    .kf-item-meta {
+      color: var(--text-3);
+      font-size: 11px;
+    }
+
+    .kf-del {
+      border: none;
+      background: #eef2ff;
+      color: #2563eb;
+      border-radius: 6px;
+      padding: 4px 7px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .bbox.manual-track {
+      transition: none !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav class="nav">
+    <a class="nav-logo" href="upload.html">
+      <div class="nav-logo-mark">M</div>Motio
+    </a>
+    <div class="nav-steps">
+      <div class="nav-step done"><span class="dot"></span>Upload</div>
+      <div class="nav-step done"><span class="dot"></span>Clip Range</div>
+      <div class="nav-step active"><span class="dot"></span>Detect</div>
+      <div class="nav-step"><span class="dot"></span>Extract</div>
+      <div class="nav-step"><span class="dot"></span>Result</div>
+    </div>
+    <div class="nav-right">
+      <span class="badge badge-blue" id="rangeTag">—</span>
+      <span class="badge badge-gray">Step 3 of 6</span>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-hdr anim">
+      <div>
+        <div class="page-title"><em>Detect</em> & Select Target</div>
+        <div class="page-desc">Click a person on the video or in the list — only human subjects can be selected</div>
+      </div>
+      <div class="page-hdr-right">
+        <span class="badge badge-blue">4 objects detected</span>
+        <span class="badge badge-blue">2 persons</span>
+      </div>
+    </div>
+
+    <div class="page-body anim-1">
+      <div class="select-body">
+
+        <!-- Left: detection frame -->
+        <div class="select-left">
+          <div class="detection-frame" id="detFrame">
+            <div class="click-marker" id="clickMarker" style="display:none;"></div>
+            <div class="track-readout" id="trackReadout">Click on video to add keyframe</div>
+            <div class="no-video" id="noVid">No video loaded</div>
+            <video id="detVideo" muted loop playsinline style="display:none;"></video>
+
+            <div class="scan-line"></div>
+
+            <!-- Bboxes -->
+            <div class="bbox person" id="bb-P01" data-id="P01"
+              style="color:#2563eb;border-color:#2563eb;top:21.5%;left:29.3%;width:23%;height:72%;">
+              <!-- { time: 0.00, x: 29.3, y: 21.5, w: 23.0, h: 72.0 }, -->
+
+              <div class="bbox-label">
+                <span class="bbox-label-text">Person 01</span>
+                <span class="bbox-label-conf">98.2%</span>
+              </div>
+              <div class="bbox-check">✓</div>
+            </div>
+
+            <div class="bbox person" id="bb-P02" data-id="P02"
+              style="color:#0891b2;border-color:#0891b2;top:21%;left: 61.5%;width:5%;height:15%;">
+              <div class="bbox-label">
+                <span class="bbox-label-text">Person 02</span>
+                <span class="bbox-label-conf">94.7%</span>
+              </div>
+              <div class="bbox-check">✓</div>
+            </div>
 
 
-const trackingData = {
-  P01: normalizeKeyframes(rawTrackingData.P01)
-};
+            <div class="v-top-bar">
+              <div style="display:flex;gap:5px;">
+                <span class="badge badge-gray" id="vFile">sample.mp4</span>
+                <span class="badge badge-gray" id="vRange">—</span>
+              </div>
+              <span class="badge badge-blue">4 detected</span>
+            </div>
+            <div class="v-bottom-bar">
+              <span class="badge badge-gray" id="vSelBadge" style="display:none;"></span>
+              <span style="font-size:11px;color:rgba(255,255,255,0.5);" id="vHint">Click a person to select</span>
+            </div>
+          </div>
 
-function renderTrackingFrame() {
-  if (storedURL && selectedId && detVideo.style.display !== 'none') {
-    updateTrackingPreview(detVideo.currentTime || 0);
-  }
+          <!-- Mini playback -->
+          <div class="mini-pb">
+            <button class="mini-play" id="miniPlayBtn">▶</button>
+            <div class="mini-scrub" id="miniScrub">
+              <div class="mini-scrub-fill" id="miniScrubFill"></div>
+            </div>
+            <div class="mini-time"><span id="miniCur">00:00</span> / <span id="miniTotal">00:00</span></div>
+            <span class="badge badge-gray" id="miniFile">—</span>
+          </div>
+        </div>
 
-  requestAnimationFrame(renderTrackingFrame);
-}
+        <!-- Right: list + summary -->
+        <div class="select-right">
+          <div class="side-hdr">
+            <span>Detected Objects</span>
+            <span class="badge badge-gray">4</span>
+          </div>
+          <div class="side-body" id="objCards"></div>
 
-requestAnimationFrame(renderTrackingFrame);
+          <div class="sel-summary">
+            <div class="sel-summary-empty" id="sumEmpty">Select a person to continue</div>
+            <div class="sel-summary-info" id="sumInfo">
+              <div class="sel-name" id="sumName">—</div>
+              <div class="sel-conf" id="sumConf">—</div>
+              <div class="info-row"><span class="info-key">Type</span><span class="info-val blue">Human Subject</span>
+              </div>
+              <div class="info-row"><span class="info-key">Keypoints</span><span class="info-val">17 (COCO-17)</span>
+              </div>
+              <div class="info-row"><span class="info-key">Visibility</span><span class="info-val green">Full
+                  body</span></div>
+              <div class="info-row"><span class="info-key">Tracking</span><span class="info-val green">Stable</span>
+              </div>
+            </div>
+          </div>
 
-const detFrame = document.getElementById('detFrame');
-const clickMarker = document.getElementById('clickMarker');
-const trackReadout = document.getElementById('trackReadout');
-const kfList = document.getElementById('kfList');
+          <div class="side-actions">
+            <button class="btn btn-secondary btn-sm" onclick="window.location.href='trim.html'">← Back</button>
+            <button class="btn btn-primary" id="nextBtn" disabled>Start Extraction →</button>
+          </div>
+        </div>
 
-function getBBoxEl(id) {
-  return document.querySelector(`.bbox[data-id="${id}"]`);
-}
+      </div>
+    </div>
+  </div>
 
-function percent(n) {
-  return Math.round(n * 10) / 10;
-}
+  <script>
+    const PERSONS = [
+      { id: 'P01', label: 'Person 01', color: '#2563eb', conf: '98.2%', type: 'human' },
+      { id: 'P02', label: 'Person 02', color: '#0891b2', conf: '94.7%', type: 'human' },
+    ];
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
-}
+    const storedURL = "video_00_00.mp4"; // 실제로는 localStorage.getItem('motio_videoURL') 등에서 불러와야 함
+    const storedFile = "sample.mp4";
+    const storedStart = localStorage.getItem('motio_startTime') || '00:03';
+    const storedEnd = localStorage.getItem('motio_endTime') || '00:12';
 
-function t2s(txt) {
-  if (!txt) return 0;
-  const parts = txt.split(':').map(Number);
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  return 0;
-}
+    document.getElementById('rangeTag').textContent = storedStart + ' — ' + storedEnd;
+    document.getElementById('vRange').textContent = storedStart + ' — ' + storedEnd;
+    document.getElementById('vFile').textContent = storedFile;
+    document.getElementById('miniFile').textContent = storedFile;
 
-function formatSec(sec) {
-  if (isNaN(sec)) return '00:00.00';
-  const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-  const ss = String(Math.floor(sec % 60)).padStart(2, '0');
-  const cc = String(Math.floor((sec % 1) * 100)).padStart(2, '0');
-  return `${mm}:${ss}.${cc}`;
-}
+    const detVideo = document.getElementById('detVideo');
+    if (storedURL) {
+      detVideo.src = storedURL; detVideo.style.display = 'block';
+      document.getElementById('noVid').style.display = 'none';
+      detVideo.addEventListener('loadedmetadata', () => {
+        document.getElementById('miniTotal').textContent = s2t(detVideo.duration);
 
-function getCurrentBoxState(id) {
-  const el = getBBoxEl(id);
-  return {
-    x: parseFloat(el.style.left),
-    y: parseFloat(el.style.top),
-    w: parseFloat(el.style.width),
-    h: parseFloat(el.style.height)
-  };
-}
+        /* 영상 로드되면 P01 자동 선택 */
+        selectPerson('P01');
+        updateTrackingPreview(0);
 
-function setBoxState(id, state) {
-  const el = getBBoxEl(id);
-  if (!el) return;
-  el.classList.add('manual-track');
-  el.style.left = `${state.x}%`;
-  el.style.top = `${state.y}%`;
-  el.style.width = `${state.w}%`;
-  el.style.height = `${state.h}%`;
-}
+        detVideo.addEventListener('seeked', () => {
+          updateTrackingPreview(detVideo.currentTime);
+        });
+      });
 
-function addKeyframe(id, frame) {
-  if (!trackingData[id]) trackingData[id] = [];
-  trackingData[id].push(frame);
-  trackingData[id].sort((a, b) => a.time - b.time);
-  renderKeyframes();
-}
+      detVideo.addEventListener('timeupdate', () => {
+        const p = detVideo.currentTime / (detVideo.duration || 1) * 100;
+        document.getElementById('miniScrubFill').style.width = p + '%';
+        document.getElementById('miniCur').textContent = s2t(detVideo.currentTime);
 
-function removeKeyframe(id, index) {
-  if (!trackingData[id]) return;
-  trackingData[id].splice(index, 1);
-  renderKeyframes();
-}
+      });
+    }
 
-function renderKeyframes() {
-  if (!selectedId || !trackingData[selectedId] || trackingData[selectedId].length === 0) {
-    <!-- kfList.innerHTML = `<div style="font-size:12px;color:var(--text-4);">No keyframes yet</div>`; -->
-    return;
-  }
+    const miniPlayBtn = document.getElementById('miniPlayBtn');
+    miniPlayBtn.addEventListener('click', () => {
+      if (!storedURL) return;
 
-  kfList.innerHTML = trackingData[selectedId].map((kf, idx) => `
+      detVideo.paused ? detVideo.play() : detVideo.pause();
+      miniPlayBtn.textContent = detVideo.paused ? '▶' : '⏸';
+    });
+
+    document.getElementById('miniScrub').addEventListener('click', e => {
+      if (!storedURL || !detVideo.duration) return;
+
+      const r = document.getElementById('miniScrub').getBoundingClientRect();
+      detVideo.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * detVideo.duration;
+    });
+
+
+    let selectedId = null;
+
+    const rawTrackingData = {
+      P01: [
+        { time: 0.00, x: 29.3, y: 21.5, w: 23.0, h: 72.0 },
+        { time: 1.78, x: 30.8, y: 20.6, w: 23.0, h: 72.0 },
+        { time: 2.19, x: 33.8, y: 17.5, w: 23.0, h: 72.0 },
+        { time: 3.66, x: 35.9, y: 15.7, w: 23.0, h: 72.0 },
+        { time: 4.50, x: 28.7, y: 19.0, w: 23.0, h: 72.0 },
+        { time: 4.50, x: 29.8, y: 17.5, w: 23.0, h: 72.0 },
+        { time: 5.59, x: 33.1, y: 14.0, w: 23.0, h: 72.0 },
+        { time: 6.25, x: 37.9, y: 14.6, w: 23.0, h: 72.0 },
+        { time: 6.25, x: 38.4, y: 14.6, w: 23.0, h: 72.0 },
+        { time: 6.93, x: 43.1, y: 12.6, w: 23.0, h: 72.0 },
+      ],
+      P02: [
+        { time: 0.00, x: 51.6, y: 0.0, w: 10.0, h: 15.0 }
+      ]
+    };
+
+
+    function normalizeKeyframes(arr) {
+      const sorted = [...arr].sort((a, b) => a.time - b.time);
+      const out = [];
+
+      for (let i = 0; i < sorted.length; i++) {
+        const cur = { ...sorted[i] };
+
+        if (out.length > 0 && cur.time <= out[out.length - 1].time) {
+          cur.time = out[out.length - 1].time + 0.001;
+        }
+
+        out.push(cur);
+      }
+
+      return out;
+    }
+
+
+    const trackingData = {
+      P01: normalizeKeyframes(rawTrackingData.P01)
+    };
+
+    function renderTrackingFrame() {
+      if (storedURL && selectedId && detVideo.style.display !== 'none') {
+        updateTrackingPreview(detVideo.currentTime || 0);
+      }
+
+      requestAnimationFrame(renderTrackingFrame);
+    }
+
+    requestAnimationFrame(renderTrackingFrame);
+
+    const detFrame = document.getElementById('detFrame');
+    const clickMarker = document.getElementById('clickMarker');
+    const trackReadout = document.getElementById('trackReadout');
+    const kfList = document.getElementById('kfList');
+
+    function getBBoxEl(id) {
+      return document.querySelector(`.bbox[data-id="${id}"]`);
+    }
+
+    function percent(n) {
+      return Math.round(n * 10) / 10;
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function t2s(txt) {
+      if (!txt) return 0;
+      const parts = txt.split(':').map(Number);
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      return 0;
+    }
+
+    function formatSec(sec) {
+      if (isNaN(sec)) return '00:00.00';
+      const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+      const ss = String(Math.floor(sec % 60)).padStart(2, '0');
+      const cc = String(Math.floor((sec % 1) * 100)).padStart(2, '0');
+      return `${mm}:${ss}.${cc}`;
+    }
+
+    function getCurrentBoxState(id) {
+      const el = getBBoxEl(id);
+      return {
+        x: parseFloat(el.style.left),
+        y: parseFloat(el.style.top),
+        w: parseFloat(el.style.width),
+        h: parseFloat(el.style.height)
+      };
+    }
+
+    function setBoxState(id, state) {
+      const el = getBBoxEl(id);
+      if (!el) return;
+      el.classList.add('manual-track');
+      el.style.left = `${state.x}%`;
+      el.style.top = `${state.y}%`;
+      el.style.width = `${state.w}%`;
+      el.style.height = `${state.h}%`;
+    }
+
+    function addKeyframe(id, frame) {
+      if (!trackingData[id]) trackingData[id] = [];
+      trackingData[id].push(frame);
+      trackingData[id].sort((a, b) => a.time - b.time);
+      renderKeyframes();
+    }
+
+    function removeKeyframe(id, index) {
+      if (!trackingData[id]) return;
+      trackingData[id].splice(index, 1);
+      renderKeyframes();
+    }
+
+    function renderKeyframes() {
+      if (!selectedId || !trackingData[selectedId] || trackingData[selectedId].length === 0) {
+        <!-- kfList.innerHTML = `<div style="font-size:12px;color:var(--text-4);">No keyframes yet</div>`; -->
+        return;
+      }
+
+      kfList.innerHTML = trackingData[selectedId].map((kf, idx) => `
     <div class="kf-item">
       <div class="kf-item-top">
         <div class="kf-item-time">${formatSec(kf.time)}</div>
@@ -528,187 +723,188 @@ function renderKeyframes() {
       </div>
     </div>
   `).join('');
-}
-
-window.removeKeyframe = removeKeyframe;
-
-
-function interpolateFrames(a, b, t) {
-  const duration = b.time - a.time;
-  if (duration <= 0) {
-    return { x: b.x, y: b.y, w: b.w, h: b.h };
-  }
-
-  const ratio = (t - a.time) / duration;
-
-  return {
-    x: a.x + (b.x - a.x) * ratio,
-    y: a.y + (b.y - a.y) * ratio,
-    w: a.w + (b.w - a.w) * ratio,
-    h: a.h + (b.h - a.h) * ratio,
-  };
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-function catmullRom(p0, p1, p2, p3, t) {
-  const t2 = t * t;
-  const t3 = t2 * t;
-
-  return 0.5 * (
-    (2 * p1) +
-    (-p0 + p2) * t +
-    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-    (-p0 + 3 * p1 - 3 * p2 + p3) * t3
-  );
-}
-
-function interpolateSmooth(arr, i, t) {
-  const p0 = arr[Math.max(0, i - 1)];
-  const p1 = arr[i];
-  const p2 = arr[Math.min(arr.length - 1, i + 1)];
-  const p3 = arr[Math.min(arr.length - 1, i + 2)];
-
-  return {
-    x: catmullRom(p0.x, p1.x, p2.x, p3.x, t),
-    y: catmullRom(p0.y, p1.y, p2.y, p3.y, t),
-    w: catmullRom(p0.w, p1.w, p2.w, p3.w, t),
-    h: catmullRom(p0.h, p1.h, p2.h, p3.h, t),
-  };
-}
-function getInterpolatedState(id, time) {
-  const arr = trackingData[id];
-  if (!arr || arr.length === 0) return null;
-  if (arr.length === 1) return arr[0];
-
-  if (time <= arr[0].time) return arr[0];
-  if (time >= arr[arr.length - 1].time) return arr[arr.length - 1];
-
-  for (let i = 0; i < arr.length - 1; i++) {
-    const cur = arr[i];
-    const next = arr[i + 1];
-
-    if (time >= cur.time && time <= next.time) {
-      const duration = next.time - cur.time;
-      const rawT = duration > 0 ? (time - cur.time) / duration : 0;
-
-      // 끝에서 살짝 감속 느낌을 주고 싶으면 ease도 추가 가능
-      const easedT = rawT * rawT * (3 - 2 * rawT); // smoothstep
-
-      return interpolateSmooth(arr, i, easedT);
     }
-  }
 
-  return arr[arr.length - 1];
-}
-
-function updateTrackingPreview(time) {
-  if (!selectedId) return;
-
-  const state = getInterpolatedState(selectedId, time);
-  if (!state) return;
-
-  setBoxState(selectedId, state);
-
-  clickMarker.style.display = 'block';
-  clickMarker.style.left = `${state.x + state.w / 2}%`;
-  clickMarker.style.top = `${state.y + state.h / 2}%`;
-
-  trackReadout.textContent =
-    `${selectedId} | t=${formatSec(time)} | x=${state.x.toFixed(1)} | y=${state.y.toFixed(1)} | w=${state.w.toFixed(1)} | h=${state.h.toFixed(1)}`;
-}
+    window.removeKeyframe = removeKeyframe;
 
 
-detFrame.addEventListener('click', (e) => {
-  if (!storedURL || !selectedId) return;
+    function interpolateFrames(a, b, t) {
+      const duration = b.time - a.time;
+      if (duration <= 0) {
+        return { x: b.x, y: b.y, w: b.w, h: b.h };
+      }
 
-  const rect = detFrame.getBoundingClientRect();
-  const px = e.clientX - rect.left;
-  const py = e.clientY - rect.top;
+      const ratio = (t - a.time) / duration;
 
-  const x = clamp(percent((px / rect.width) * 100), 0, 100);
-  const y = clamp(percent((py / rect.height) * 100), 0, 100);
+      return {
+        x: a.x + (b.x - a.x) * ratio,
+        y: a.y + (b.y - a.y) * ratio,
+        w: a.w + (b.w - a.w) * ratio,
+        h: a.h + (b.h - a.h) * ratio,
+      };
+    }
 
-  const curBox = getCurrentBoxState(selectedId);
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
 
-  const newState = {
-    time: detVideo.currentTime,
-    x: clamp(x - curBox.w / 2, 0, 100 - curBox.w),
-    y: clamp(y - curBox.h / 2, 0, 100 - curBox.h),
-    w: curBox.w,
-    h: curBox.h
-  };
+    function catmullRom(p0, p1, p2, p3, t) {
+      const t2 = t * t;
+      const t3 = t2 * t;
 
-  addKeyframe(selectedId, newState);
+      return 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+      );
+    }
 
-  clickMarker.style.display = 'block';
-  clickMarker.style.left = `${x}%`;
-  clickMarker.style.top = `${y}%`;
+    function interpolateSmooth(arr, i, t) {
+      const p0 = arr[Math.max(0, i - 1)];
+      const p1 = arr[i];
+      const p2 = arr[Math.min(arr.length - 1, i + 1)];
+      const p3 = arr[Math.min(arr.length - 1, i + 2)];
 
-  trackReadout.textContent =
-    `Added ${selectedId} | t=${formatSec(detVideo.currentTime)} | x=${newState.x.toFixed(1)} | y=${newState.y.toFixed(1)}`;
+      return {
+        x: catmullRom(p0.x, p1.x, p2.x, p3.x, t),
+        y: catmullRom(p0.y, p1.y, p2.y, p3.y, t),
+        w: catmullRom(p0.w, p1.w, p2.w, p3.w, t),
+        h: catmullRom(p0.h, p1.h, p2.h, p3.h, t),
+      };
+    }
+    function getInterpolatedState(id, time) {
+      const arr = trackingData[id];
+      if (!arr || arr.length === 0) return null;
+      if (arr.length === 1) return arr[0];
 
-  localStorage.setItem('motio_trackingData', JSON.stringify(trackingData));
-});
+      if (time <= arr[0].time) return arr[0];
+      if (time >= arr[arr.length - 1].time) return arr[arr.length - 1];
 
-/* Render cards */
-function renderCards() {
-  document.getElementById('objCards').innerHTML = PERSONS.map(p => `
-    <div class="obj-card ${p.type==='object'?'non-person':''} ${selectedId===p.id?'selected':''}"
-         onclick="${p.type==='human'?`selectPerson('${p.id}')`:''}"
+      for (let i = 0; i < arr.length - 1; i++) {
+        const cur = arr[i];
+        const next = arr[i + 1];
+
+        if (time >= cur.time && time <= next.time) {
+          const duration = next.time - cur.time;
+          const rawT = duration > 0 ? (time - cur.time) / duration : 0;
+
+          // 끝에서 살짝 감속 느낌을 주고 싶으면 ease도 추가 가능
+          const easedT = rawT * rawT * (3 - 2 * rawT); // smoothstep
+
+          return interpolateSmooth(arr, i, easedT);
+        }
+      }
+
+      return arr[arr.length - 1];
+    }
+
+    function updateTrackingPreview(time) {
+      if (!selectedId) return;
+
+      const state = getInterpolatedState(selectedId, time);
+      if (!state) return;
+
+      setBoxState(selectedId, state);
+
+      clickMarker.style.display = 'block';
+      clickMarker.style.left = `${state.x + state.w / 2}%`;
+      clickMarker.style.top = `${state.y + state.h / 2}%`;
+
+      trackReadout.textContent =
+        `${selectedId} | t=${formatSec(time)} | x=${state.x.toFixed(1)} | y=${state.y.toFixed(1)} | w=${state.w.toFixed(1)} | h=${state.h.toFixed(1)}`;
+    }
+
+
+    detFrame.addEventListener('click', (e) => {
+      if (!storedURL || !selectedId) return;
+
+      const rect = detFrame.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      const x = clamp(percent((px / rect.width) * 100), 0, 100);
+      const y = clamp(percent((py / rect.height) * 100), 0, 100);
+
+      const curBox = getCurrentBoxState(selectedId);
+
+      const newState = {
+        time: detVideo.currentTime,
+        x: clamp(x - curBox.w / 2, 0, 100 - curBox.w),
+        y: clamp(y - curBox.h / 2, 0, 100 - curBox.h),
+        w: curBox.w,
+        h: curBox.h
+      };
+
+      addKeyframe(selectedId, newState);
+
+      clickMarker.style.display = 'block';
+      clickMarker.style.left = `${x}%`;
+      clickMarker.style.top = `${y}%`;
+
+      trackReadout.textContent =
+        `Added ${selectedId} | t=${formatSec(detVideo.currentTime)} | x=${newState.x.toFixed(1)} | y=${newState.y.toFixed(1)}`;
+
+      localStorage.setItem('motio_trackingData', JSON.stringify(trackingData));
+    });
+
+    /* Render cards */
+    function renderCards() {
+      document.getElementById('objCards').innerHTML = PERSONS.map(p => `
+    <div class="obj-card ${p.type === 'object' ? 'non-person' : ''} ${selectedId === p.id ? 'selected' : ''}"
+         onclick="${p.type === 'human' ? `selectPerson('${p.id}')` : ''}"
          id="card-${p.id}">
       <div class="obj-card-dot" style="background:${p.color};"></div>
       <div class="obj-card-name">${p.label}</div>
-      <span class="badge ${p.type==='human'?'badge-blue':'badge-gray'}" style="font-size:10px;">${p.type==='human'?'Human':'Object'}</span>
+      <span class="badge ${p.type === 'human' ? 'badge-blue' : 'badge-gray'}" style="font-size:10px;">${p.type === 'human' ? 'Human' : 'Object'}</span>
       <span style="font-size:10px;color:var(--text-4);">${p.conf}</span>
       <div class="obj-card-check">✓</div>
     </div>`).join('');
-}
+    }
 
-function selectPerson(id) {
-  selectedId = id;
-  const p = PERSONS.find(x => x.id === id);
-  localStorage.setItem('motio_selectedId',    id);
-  localStorage.setItem('motio_selectedLabel', p.label);
+    function selectPerson(id) {
+      selectedId = id;
+      const p = PERSONS.find(x => x.id === id);
+      localStorage.setItem('motio_selectedId', id);
+      localStorage.setItem('motio_selectedLabel', p.label);
 
-  /* Bbox */
-  document.querySelectorAll('.bbox').forEach(b => {
-    if (b.dataset.id === id) { b.classList.add('selected'); b.classList.remove('dimmed'); }
-    else if (!b.classList.contains('non-person')) { b.classList.remove('selected'); b.classList.add('dimmed'); }
-  });
+      /* Bbox */
+      document.querySelectorAll('.bbox').forEach(b => {
+        if (b.dataset.id === id) { b.classList.add('selected'); b.classList.remove('dimmed'); }
+        else if (!b.classList.contains('non-person')) { b.classList.remove('selected'); b.classList.add('dimmed'); }
+      });
 
-  /* Bottom badge */
-  const sb = document.getElementById('vSelBadge');
-  sb.textContent = '✓ ' + p.label + ' selected';
-  sb.style.display = 'inline-flex';
-  sb.className = 'badge badge-blue';
-  document.getElementById('vHint').style.display = 'none';
+      /* Bottom badge */
+      const sb = document.getElementById('vSelBadge');
+      sb.textContent = '✓ ' + p.label + ' selected';
+      sb.style.display = 'inline-flex';
+      sb.className = 'badge badge-blue';
+      document.getElementById('vHint').style.display = 'none';
 
-  /* Summary */
-  document.getElementById('sumEmpty').style.display = 'none';
-  document.getElementById('sumInfo').classList.add('show');
-  document.getElementById('sumName').textContent = p.label;
-  document.getElementById('sumConf').textContent = 'Confidence ' + p.conf;
+      /* Summary */
+      document.getElementById('sumEmpty').style.display = 'none';
+      document.getElementById('sumInfo').classList.add('show');
+      document.getElementById('sumName').textContent = p.label;
+      document.getElementById('sumConf').textContent = 'Confidence ' + p.conf;
 
-  document.getElementById('nextBtn').disabled = false;
-  renderCards();
-  renderKeyframes();
-}
+      document.getElementById('nextBtn').disabled = false;
+      renderCards();
+      renderKeyframes();
+    }
 
-/* Bbox click */
-document.querySelectorAll('.bbox.person').forEach(b => {
-  b.addEventListener('click', () => selectPerson(b.dataset.id));
-});
+    /* Bbox click */
+    document.querySelectorAll('.bbox.person').forEach(b => {
+      b.addEventListener('click', () => selectPerson(b.dataset.id));
+    });
 
-renderCards();
-document.getElementById('nextBtn').addEventListener('click', () => window.location.href = 'waiting.html');
+    renderCards();
+    document.getElementById('nextBtn').addEventListener('click', () => window.location.href = 'waiting.html');
 
-function s2t(s) {
-  if (!s || isNaN(s)) return '00:00';
-  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
-}
-</script>
+    function s2t(s) {
+      if (!s || isNaN(s)) return '00:00';
+      return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+    }
+  </script>
 </body>
+
 </html>
