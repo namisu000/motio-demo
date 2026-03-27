@@ -444,7 +444,7 @@
         <!-- Left: detection frame -->
         <div class="select-left">
           <div class="detection-frame" id="detFrame">
-            <div class="click-marker" id="clickMarker" style="display:none;"></div>
+            <!-- <div class="click-marker" id="clickMarker" style="display:none;"></div> -->
             <div class="track-readout" id="trackReadout">Click on video to add keyframe</div>
             <div class="no-video" id="noVid">No video loaded</div>
             <video id="detVideo" muted loop playsinline style="display:none;"></video>
@@ -815,6 +815,29 @@
         `${selectedId} | t=${formatSec(time)} | x=${state.x.toFixed(1)} | y=${state.y.toFixed(1)} | w=${state.w.toFixed(1)} | h=${state.h.toFixed(1)}`;
     }
 
+    function updateBoxes() {
+      const currentTime = detVideo.currentTime;
+
+      Object.keys(trackingData).forEach(id => {
+        const state = getInterpolatedState(id, currentTime);
+        const el = document.querySelector(`.bbox[data-id="${id}"]`);
+
+        if (state && el) {
+          el.style.left = `${state.x}%`;
+          el.style.top = `${state.y}%`;
+          el.style.width = `${state.w}%`;
+          el.style.height = `${state.h}%`;
+        }
+      });
+
+      requestAnimationFrame(updateBoxes);
+    }
+
+    // 비디오가 로드되면 자동 업데이트 시작
+    detVideo.addEventListener('play', () => {
+      requestAnimationFrame(updateBoxes);
+    });
+
 
     detFrame.addEventListener('click', (e) => {
       if (!storedURL || !selectedId) return;
@@ -827,25 +850,6 @@
       const y = clamp(percent((py / rect.height) * 100), 0, 100);
 
       const curBox = getCurrentBoxState(selectedId);
-
-      const newState = {
-        time: detVideo.currentTime,
-        x: clamp(x - curBox.w / 2, 0, 100 - curBox.w),
-        y: clamp(y - curBox.h / 2, 0, 100 - curBox.h),
-        w: curBox.w,
-        h: curBox.h
-      };
-
-      addKeyframe(selectedId, newState);
-
-      clickMarker.style.display = 'block';
-      clickMarker.style.left = `${x}%`;
-      clickMarker.style.top = `${y}%`;
-
-      trackReadout.textContent =
-        `Added ${selectedId} | t=${formatSec(detVideo.currentTime)} | x=${newState.x.toFixed(1)} | y=${newState.y.toFixed(1)}`;
-
-      localStorage.setItem('motio_trackingData', JSON.stringify(trackingData));
     });
 
     /* Render cards */
@@ -904,6 +908,9 @@
       if (!s || isNaN(s)) return '00:00';
       return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
     }
+
+    updateBoxes();
+
   </script>
 </body>
 
