@@ -262,7 +262,9 @@
 
           <!-- Bboxes -->
           <div class="bbox person" id="bb-P01" data-id="P01"
-            style="color:#2563eb;border-color:#2563eb;top:8%;left:10%;width:23%;height:72%;">
+            style="color:#2563eb;border-color:#2563eb;top:21.5%;left:29.3%;width:23%;height:72%;">
+    <!-- { time: 0.00, x: 29.3, y: 21.5, w: 23.0, h: 72.0 }, -->
+
             <div class="bbox-label">
               <span class="bbox-label-text">Person 01</span>
               <span class="bbox-label-conf">98.2%</span>
@@ -271,7 +273,7 @@
           </div>
 
           <div class="bbox person" id="bb-P02" data-id="P02"
-            style="color:#0891b2;border-color:#0891b2;top:10%;left:56%;width:21%;height:68%;">
+            style="color:#0891b2;border-color:#0891b2;top:24%;left: 59%;width:5%;height:15%;">
             <div class="bbox-label">
               <span class="bbox-label-text">Person 02</span>
               <span class="bbox-label-conf">94.7%</span>
@@ -311,10 +313,6 @@
           <span class="badge badge-gray">4</span>
         </div>
         <div class="side-body" id="objCards"></div>
-        <!-- <div class="sel-summary" style="border-top:1px solid var(--border);"> -->
-          <!-- <div class="sel-name" style="font-size:13px;">Tracking Keyframes</div> -->
-          <!-- <div id="kfList" style="display:flex;flex-direction:column;gap:8px;"></div> -->
-        <!-- </div> -->
 
         <div class="sel-summary">
           <div class="sel-summary-empty" id="sumEmpty">Select a person to continue</div>
@@ -408,6 +406,9 @@ const rawTrackingData = {
     { time: 6.25, x: 37.9, y: 14.6, w: 23.0, h: 72.0 },
     { time: 6.25, x: 38.4, y: 14.6, w: 23.0, h: 72.0 },
     { time: 6.93, x: 43.1, y: 12.6, w: 23.0, h: 72.0 },
+  ],
+  P02: [
+    {time: 0.00, x: 51.6, y: 0.0, w: 10.0, h: 15.0}
   ]
 };
 
@@ -512,7 +513,7 @@ function removeKeyframe(id, index) {
 
 function renderKeyframes() {
   if (!selectedId || !trackingData[selectedId] || trackingData[selectedId].length === 0) {
-    kfList.innerHTML = `<div style="font-size:12px;color:var(--text-4);">No keyframes yet</div>`;
+    <!-- kfList.innerHTML = `<div style="font-size:12px;color:var(--text-4);">No keyframes yet</div>`; -->
     return;
   }
 
